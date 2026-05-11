@@ -1,0 +1,198 @@
+[
+  {
+    "id": "lsn_anthro_vs_record",
+    "title": "Антропометрия + KO power > раздутый рекорд против слабой оппозиции",
+    "body": "Если у бойца A reach/height/power значительно выше, а у B рекорд набит против низко-ранкованной оппозиции — A фаворит вопреки рекорду B. Признаки 'раздутого рекорда': все победы по решению, или нокаут-победы только над неранкованными. Проверяй quality of opposition (QoO ELO ниже 1500 у всей оппозиции = красный флаг). Пример: Prates (нокаутер, всех финишировал, проиграл одно решение Гарри который его потряс) vs JDM (рекорд против слабой оппозиции, проиграл Брэди как только встретил топ-бойца).",
+    "tags": [
+      "anthropometry",
+      "opposition_quality",
+      "ko_power"
+    ],
+    "trigger_keywords": [
+      "reach",
+      "ko/tko",
+      "нокаутер",
+      "decision",
+      "opposition",
+      "weak opposition",
+      "raised record"
+    ],
+    "active": true
+  },
+  {
+    "id": "lsn_chin_age_decline",
+    "title": "Старый ветеран (35+) с хрустальной челюстью vs молодой нокаутёр-проспект",
+    "body": "Если фаворит 33+, имеет ≥2 KO/TKO поражений в карьере или ≥1 KO поражение за последние 3 боя — его 'chin' деградирует. Молодой (<29) нокаутёр-проспект на восхождении против такого ветерана = сильная ставка на underdog с финишем. НЕ ставь heavy favorite на ветерана только по имени. Пример: Beneil Dariush (старый, недавние KO losses) vs Salkilld (молодой нокаутёр) — апсет был предсказуем.",
+    "tags": [
+      "chin",
+      "age_decline",
+      "prospect_vs_veteran"
+    ],
+    "trigger_keywords": [
+      "35+",
+      "33+",
+      "veteran",
+      "chin",
+      "ko loss",
+      "хрустальная",
+      "prospect",
+      "проспект",
+      "молодой"
+    ],
+    "active": true
+  },
+  {
+    "id": "lsn_home_decision_bias",
+    "title": "Home-country judge bias: бои в Австралии/UK/Бразилии",
+    "body": "Если бой проходит в Австралии (Perth/Sydney) → австралийцы получают примерно +5-10% к шансу на decision в близких боях. Те же правила: UK для англичан, Бразилия для бразильцев. Это НЕ повод флипать прогноз, но если ты колеблешься между Decision split и финиш — наклоняй к decision в пользу домашнего бойца. Не работает если финиш очевиден.",
+    "tags": [
+      "home_bias",
+      "judge_bias",
+      "decision"
+    ],
+    "trigger_keywords": [
+      "perth",
+      "sydney",
+      "australia",
+      "london",
+      "rio",
+      "brazil",
+      "австрал",
+      "home",
+      "venue"
+    ],
+    "active": true
+  },
+  {
+    "id": "lsn_finisher_vs_inactive",
+    "title": "Pure finisher (high finish rate) vs decision-fighter",
+    "body": "Если у одного бойца finish rate >70%, а у другого только decisions — finisher выигрывает 'fight IQ' матчей: один good punch меняет всё. Не ставь decision-prop в такой матчап. Если favourite-decision fighter не доминирует stylistically, underdog-finisher имеет реальный path to victory через KO.",
+    "tags": [
+      "finish_rate",
+      "ko_power"
+    ],
+    "trigger_keywords": [
+      "finish rate",
+      "нокаутер",
+      "decision fighter",
+      "ko рейт",
+      "финиш"
+    ],
+    "active": true
+  },
+  {
+    "id": "lsn_unknown_fighter_fallback",
+    "title": "Неизвестный дебютант: не угадывай 50/50",
+    "body": "Если у бойца меньше 2 боёв в UFC и нет публичных данных о его стиле — НЕ давай уверенность выше 55%. В таких случаях явно пиши 'недостаточно данных' и ставь win_prob 0.50-0.55. Brier штрафует overconfidence жёстче чем underconfidence.",
+    "tags": [
+      "debutant",
+      "low_data",
+      "calibration"
+    ],
+    "trigger_keywords": [
+      "debut",
+      "дебют",
+      "rookie",
+      "0-0",
+      "1-0",
+      "newcomer"
+    ],
+    "active": true
+  },
+  {
+    "id": "lsn_8023f07f",
+    "title": "Падающий heavyweight-ветеран с серией KO-losses",
+    "body": "Tuivasa-pattern: heavy hitter, который ВЫГЛЯДИТ как нокаутёр но проиграл 3+ боя подряд KO/TKO. Чин и кардио убиты, момент уже ушёл. Молодой соперник с любым приличным выстрелом — фаворит. Если ветеран на серии 3+ losses → НЕ ставь на него независимо от имени. Heavy ‘Big Tai’-style фейды повторяются.",
+    "tags": [
+      "heavyweight",
+      "decline",
+      "loss_streak"
+    ],
+    "trigger_keywords": [
+      "tuivasa",
+      "heavyweight",
+      "lose streak",
+      "3 losses",
+      "падающий",
+      "decline"
+    ],
+    "created_at": "2026-05-11T13:09:59",
+    "source": "manual:post_v2_blindtest",
+    "active": true
+  },
+  {
+    "id": "lsn_5c5f42df",
+    "title": "Heavyweight с большим reach-disadvantage = glass chin trigger",
+    "body": "В тяжёлом весе reach + footwork решают часто больше чем сила. Если у фаворита (по имени) reach-disadvantage 4+ см и нет wrestling-base — он будет ловить контру весь бой. Не overconfident. Гейзиев/Першич-pattern: мощный wrestler-нокаутер vs более длинный footwork-striker → striker часто берёт.",
+    "tags": [
+      "heavyweight",
+      "reach",
+      "striking"
+    ],
+    "trigger_keywords": [
+      "heavyweight",
+      "reach disadvantage",
+      "wrestler",
+      "striker"
+    ],
+    "created_at": "2026-05-11T13:09:59",
+    "source": "manual:post_v2_blindtest",
+    "active": true
+  },
+  {
+    "id": "lsn_8e44c112",
+    "title": "Старый Flyweight/BW (33+) в дивизионе скоростников",
+    "body": "В лёгких весах (FLY, BW, FW) скорость декаит к 32+ резче чем в средних. Tim Elliott / Meerschaert / Gorimbo патерны: ветеран 33+ против активного молодого скоростника = чаще проигрывает по очкам через активность. НЕ ставь heavy favorite на ветерана в лёгких дивизионах если соперник <30 и стилистически активный.",
+    "tags": [
+      "age_decline",
+      "small_divisions"
+    ],
+    "trigger_keywords": [
+      "flyweight",
+      "bantamweight",
+      "featherweight",
+      "33+",
+      "ветеран"
+    ],
+    "created_at": "2026-05-11T13:09:59",
+    "source": "manual:post_v2_blindtest",
+    "active": true
+  },
+  {
+    "id": "lsn_22837476",
+    "title": "‘Имя > форма’ ловушка: BMF/legend status overrides последние 3 боя",
+    "body": "Если у бойца ‘имя’ (звезда UFC, чемпион в прошлом, BMF), модель часто ставит его фаворитом ИГНОРИРУЯ последние 3 боя. Это самая частая ошибка. Правило: ВСЕГДА смотри последние 3 боя — если 2+ losses, имя не спасает. Tuivasa, Dariush, Meerschaert — все попали под это.",
+    "tags": [
+      "name_bias",
+      "recency"
+    ],
+    "trigger_keywords": [
+      "legend",
+      "former champion",
+      "bmf",
+      "имя",
+      "звезда"
+    ],
+    "created_at": "2026-05-11T13:09:59",
+    "source": "manual:post_v2_blindtest",
+    "active": true
+  },
+  {
+    "id": "lsn_26312062",
+    "title": "Calibration cap: не выходи за 65% без RAG-данных",
+    "body": "Если у тебя нет полных метрик бойцов (SLpM/TDAvg/etc), максимальная уверенность которую ты имеешь право выдать — 65%. Меньше уверенность → меньше Brier penalty при ошибке. Лучше быть систематически underconfident чем overconfident.",
+    "tags": [
+      "calibration",
+      "low_data"
+    ],
+    "trigger_keywords": [
+      "no data",
+      "недостаточно",
+      "уверенность",
+      "calibration"
+    ],
+    "created_at": "2026-05-11T13:09:59",
+    "source": "manual:post_v2_blindtest",
+    "active": true
+  }
+]

@@ -353,6 +353,64 @@ def render_accuracy_dashboard(*,
             st.caption("Мало данных.")
 
     # ============================================================
+    # 💰 BETTING PERFORMANCE (ROI + CLV)
+    # ============================================================
+    st.markdown("---")
+    st.markdown("### 💰 Betting Performance · ROI + CLV")
+    try:
+        from clv_tracker import betting_performance
+        bp = betting_performance(history)
+    except Exception:
+        bp = None
+
+    if bp and bp.get("n_bets", 0) > 0:
+        bc1, bc2, bc3, bc4, bc5 = st.columns(5)
+        bc1.metric("Ставок", bp["n_bets"])
+        bc2.metric("ROI",
+                    f"{bp['roi']:+.1f}%" if bp["roi"] is not None else "—",
+                    help="(прибыль / общий банк) × 100")
+        bc3.metric("Прибыль",
+                    f"${bp['profit']:+.2f}" if bp["profit"] is not None else "—",
+                    delta=f"банк ${bp['total_stake']:.0f}")
+        bc4.metric("Avg odds",
+                    f"{bp['avg_odds']:.2f}" if bp["avg_odds"] else "—")
+        if bp["clv_n"] > 0:
+            clv_color = "+" if (bp["clv_avg"] or 0) > 0 else ""
+            bc5.metric(
+                "CLV avg",
+                f"{clv_color}{bp['clv_avg']:.1f}%" if bp["clv_avg"] is not None else "—",
+                delta=f"{bp['clv_positive_rate']:.0f}% positive",
+                help="Closing Line Value: средний % сдвига коэфа в твою пользу. "
+                      "Положительный = sharp betting. Самый важный показатель скилла."
+            )
+        else:
+            bc5.metric("CLV avg", "—",
+                        help="Требует closing_odds_snapshot — заполняется когда отмечаешь "
+                              "результат с собранным closing line.")
+
+        # By bet type
+        if bp.get("by_bet_type"):
+            st.markdown("**По типам ставок:**")
+            rows = []
+            for bt, d in bp["by_bet_type"].items():
+                rows.append({
+                    "Тип": bt,
+                    "Ставок": d["n"],
+                    "Won": d["won"],
+                    "Win %": f"{d['acc']*100:.1f}%" if d["acc"] is not None else "—",
+                    "Stake $": f"{d['stake']:.0f}",
+                    "Return $": f"{d['return']:.0f}",
+                    "ROI %": f"{d['roi']*100:+.1f}%" if d["roi"] is not None else "—",
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    else:
+        st.caption(
+            "💡 Заполни поля **Odds / Stake** в карточке прогноза после боя, "
+            "и здесь появятся ROI/CLV метрики. CLV считается если у записи есть "
+            "`closing_odds_snapshot`."
+        )
+
+    # ============================================================
     # CALIBRATION CHART
     # ============================================================
     st.markdown("---")
@@ -560,14 +618,34 @@ def render_accuracy_dashboard(*,
                 persist_history()
                 st.rerun()
 
-            # P&L
-            with st.expander("💵 Odds / Stake / P&L"):
+            # P&L + CLV
+            with st.expander("💵 Odds / Stake / Closing line / P&L · CLV"):
+                # Показываем market odds snapshot если есть
+                ms = h.get("market_odds_snapshot")
+                if ms:
+                    st.caption(
+                        f"📸 **Snapshot** в момент прогноза: "
+                        f"{h.get('fa','A')} @ {ms.get('odds_a','?')} · "
+                        f"{h.get('fb','B')} @ {ms.get('odds_b','?')} · "
+                        f"{ms.get('n_books','?')} books · "
+                        f"fetched {ms.get('fetched_at','?')[:16]}"
+                    )
+
                 oc1, oc2, oc3 = st.columns(3)
-                odds = oc1.number_input("Коэф", 1.0, 50.0,
-                    float(h.get("odds") or 2.0), key=f"odds_{real_idx}")
+                odds = oc1.number_input("Твой коэф (when bet)", 1.0, 50.0,
+                    float(h.get("odds") or 2.0), key=f"odds_{real_idx}",
+                    help="Коэф по которому ты сделал ставку")
                 stake = oc2.number_input("Ставка $", 0.0, 10000.0,
                     float(h.get("stake") or 100.0), key=f"stake_{real_idx}")
-                if oc3.button("💾", key=f"sodds_{real_idx}"):
+                close_a = oc3.number_input("Closing line (winner side)",
+                    0.0, 50.0,
+                    float((h.get("closing_odds_snapshot") or {}).get("odds_a") or 0.0),
+                    step=0.01, key=f"closeodds_{real_idx}",
+                    help="Коэф на победителя в момент закрытия рынка перед боем. "
+                          "Можно глянуть на Pinnacle / Betfair Exchange. Заполнение "
+                          "разлочит CLV-метрику.")
+
+                if st.button("💾 Сохранить odds + CLV", key=f"sodds_{real_idx}"):
                     rec = st.session_state.history[real_idx]
                     rec["odds"] = odds
                     rec["stake"] = stake
@@ -575,13 +653,34 @@ def render_accuracy_dashboard(*,
                         rec["profit"] = round(stake * (odds - 1), 2)
                     elif rec.get("status") == "lost":
                         rec["profit"] = -stake
+                    if close_a > 1.0:
+                        rec["closing_odds_snapshot"] = {
+                            "odds_a": close_a,
+                            "fetched_at": datetime.now().isoformat(timespec="seconds"),
+                        }
+                        # CLV для ставки
+                        try:
+                            from clv_tracker import compute_clv
+                            rec["clv"] = compute_clv(odds, close_a)
+                        except Exception:
+                            pass
                     persist_history()
                     st.rerun()
+
                 if h.get("profit") is not None:
                     color = "#16a34a" if h["profit"] > 0 else "#dc2626"
                     st.markdown(
                         f"**P&L:** <span style='color:{color};font-weight:600'>"
                         f"${h['profit']:+.2f}</span>",
+                        unsafe_allow_html=True,
+                    )
+                clv = h.get("clv")
+                if clv and clv.get("clv_pct") is not None:
+                    cpc = clv["clv_pct"] * 100
+                    color = "#16a34a" if cpc > 0 else "#dc2626"
+                    st.markdown(
+                        f"**CLV:** <span style='color:{color};font-weight:600'>"
+                        f"{cpc:+.1f}%</span> · {clv['verdict']}",
                         unsafe_allow_html=True,
                     )
 

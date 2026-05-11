@@ -105,6 +105,50 @@ Hidden edge: [неочевидный фактор].
 Никакой статистики — это работа Stats Agent. Только soft factors."""
 
 
+OPPOSITION_AGENT_PROMPT = """You are the **Opposition Agent** (devil's advocate) of a UFC
+prediction system. Your ONLY job: построить СИЛЬНЕЙШИЙ кейс за АНДЕРДОГА.
+
+Даже если фаворит очевиден — представь, что тебе платят только если андердог
+побеждает. Найди все причины, пути к апсету, паттерны, подсказки из RAG/intel.
+
+Анализируй:
+- Слабости у фаворита, которые эксплойтит стиль андердога
+- Исторические апсеты в похожих matchup-ах (RAG)
+- Intangibles: motivation, mismatch в раздевалке, ring rust фаворита
+- Конкретный game plan: «если X делает Y в раунде Z — апсет реален»
+
+ФОРМАТ:
+### 🚨 OPPOSITION CASE
+- **Путь к апсету:** [конкретный сценарий]
+- **Эксплойт-стиль:** [какая слабость фаворита кликает на стиль андердога]
+- **Исторический прецедент:** [похожий апсет из RAG, если есть]
+- **Скрытые факторы:** [intel/motivation/форма]
+
+### ⚖️ ВЕРДИКТ OPPOSITION
+Вероятность апсета (грубая оценка): XX%. Если >35% — это НЕ heavy favorite.
+Главная причина: [одна фраза]."""
+
+
+HISTORICAL_AGENT_PROMPT = """You are the **Historical Parallels Agent** of a UFC prediction
+system. Your ONLY job: найти 2-3 наиболее похожих боя из прошлого (через RAG)
+и спроецировать их исходы на текущий бой.
+
+Критерии похожести: стили, физические данные, весовой класс, возраст, опыт,
+опыт против конкретного типа оппонента.
+
+ФОРМАТ:
+### 📜 ИСТОРИЧЕСКИЕ ПАРАЛЛЕЛИ
+1. **[Бой X vs Y, дата]** — чем похож на текущий, как закончился, урок.
+2. **[Бой X vs Y, дата]** — чем похож, как закончился.
+3. (опционально) **[Бой X vs Y]** — если есть.
+
+### 🎯 ПРОЕКЦИЯ
+Если большинство параллелей закончились одинаково → это **сильный сигнал**.
+Если разнобой → это **близкий бой** и базы недостаточно.
+Прогноз на основе истории: **[Имя]** побеждает, метод чаще всего [KO/Sub/Dec].
+Уверенность базы: [Низкая/Средняя/Высокая]."""
+
+
 SYNTHESIZER_PROMPT = """You are the **Betting Edge Synthesizer** — финальный агент UFC predictor system.
 Ты получаешь выводы 3 специализированных агентов (Stats / Style / Context) и
 формируешь финальный калиброванный прогноз + рекомендацию по ставке.
@@ -246,6 +290,8 @@ def run_multi_agent_prediction(
     base_url: str | None = None,
     models: dict | None = None,
     parallel: bool = True,
+    include_opposition: bool = False,
+    include_historical: bool = False,
 ) -> MultiAgentResult:
     """Главный orchestrator. Запускает 3 агента (параллельно по умолчанию),
     затем Synthesizer.
@@ -284,6 +330,22 @@ def run_multi_agent_prediction(
             temperature=0.5, max_tokens=600,
         ),
     }
+    if include_opposition:
+        agents["Opposition Agent"] = Agent(
+            name="Opposition Agent",
+            system_prompt=OPPOSITION_AGENT_PROMPT,
+            model=models.get("opposition", default_model),
+            api_key=api_key, base_url=base_url,
+            temperature=0.6, max_tokens=600,
+        )
+    if include_historical:
+        agents["Historical Parallels Agent"] = Agent(
+            name="Historical Parallels Agent",
+            system_prompt=HISTORICAL_AGENT_PROMPT,
+            model=models.get("historical", default_model),
+            api_key=api_key, base_url=base_url,
+            temperature=0.4, max_tokens=700,
+        )
 
     agent_outputs: dict[str, str] = {}
     timings: dict[str, float] = {}
@@ -291,7 +353,7 @@ def run_multi_agent_prediction(
 
     # Запускаем агентов 1-3 параллельно
     if parallel:
-        with ThreadPoolExecutor(max_workers=3) as ex:
+        with ThreadPoolExecutor(max_workers=max(3, len(agents))) as ex:
             futures = {
                 ex.submit(agent.run, base_msg): name
                 for name, agent in agents.items()
@@ -344,6 +406,10 @@ AGENT_REGISTRY = [
      "icon": "🥊", "description": "Глубокий стилистический матч-ап"},
     {"key": "context", "name": "Context Agent",
      "icon": "🧠", "description": "Менталка, форма, весогонка, intel"},
+    {"key": "opposition", "name": "Opposition Agent",
+     "icon": "🚨", "description": "Devil's advocate — кейс за андердога"},
+    {"key": "historical", "name": "Historical Parallels",
+     "icon": "📜", "description": "RAG-параллели из прошлых боёв"},
     {"key": "synthesizer", "name": "Synthesizer",
      "icon": "🎯", "description": "Финальный синтез + калибровка ставки"},
 ]

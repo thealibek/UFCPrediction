@@ -7,6 +7,7 @@ import json
 import os
 import re
 import uuid
+from pathlib import Path
 from datetime import datetime, date, timedelta
 from typing import Optional
 
@@ -983,7 +984,14 @@ def demo_analysis(fa, fb, ctx, intel):
 # ---------- LLM ----------
 def get_fight_prediction(fa, fb, ctx, intel, api_key, base_url, model):
     from openai import OpenAI
+    from lessons import relevant_lessons, format_lessons_block, build_context_string
     client = OpenAI(api_key=api_key, base_url=base_url)
+
+    # --- Инжект Lessons из персистентной памяти ошибок ---
+    ctx_str = build_context_string(fa, fb, ctx, intel)
+    lessons = relevant_lessons(ctx_str, max_n=5)
+    lessons_block = format_lessons_block(lessons)
+
     user_msg = f"""Проанализируй предстоящий бой UFC.
 
 ## БОЕЦ A
@@ -997,11 +1005,15 @@ def get_fight_prediction(fa, fb, ctx, intel, api_key, base_url, model):
 - Титульный: {'Да' if ctx.get('title_fight') else 'Нет'}
 - Категория: {ctx.get('division', '—')}
 - Событие: {ctx.get('event', '—')}
+- Venue: {ctx.get('venue', '—')}
 
 ## ДОПОЛНИТЕЛЬНЫЙ ИНТЕЛЛЕКТ
 {intel.strip() if intel.strip() else '(не предоставлено)'}
 
-Дай развёрнутый прогноз строго по формату системного промпта. Только русский."""
+{lessons_block}
+
+Дай развёрнутый прогноз строго по формату системного промпта. Только русский.
+Применяй УРОКИ выше — это правила извлечённые из прошлых ошибок модели."""
     resp = client.chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": SYSTEM_PROMPT},
@@ -1060,6 +1072,10 @@ with st.sidebar:
         "📊 Analytics",
         "⚖️ Weight Cut",
         "📚 History & Accuracy",
+        "🧪 Backtesting",
+        "❤️ Model Health",
+        "🎯 Blind Tests",
+        "📖 Lessons",
     ]
     page = st.radio("Навигация", PAGES, label_visibility="collapsed",
                     index=PAGES.index(st.session_state.page) if st.session_state.page in PAGES else 0)
@@ -1916,10 +1932,91 @@ elif page == "🔴 Live Card":
     st.caption("Реальные данные с публичного ESPN API: фото, флаги, odds, статус. "
                "Кэш 5 минут. Источник: site.api.espn.com")
 
-    rc1, rc2 = st.columns([1, 5])
+    rc1, rc2, rc3 = st.columns([1, 1, 4])
     if rc1.button("🔄 Обновить"):
         st.cache_data.clear()
         st.rerun()
+
+    # ----- Live odds toggle -----
+    try:
+        from odds_provider import is_available as _odds_avail
+        _odds_ready = _odds_avail()
+    except Exception:
+        _odds_ready = False
+    show_value = rc2.toggle("💰 Auto-value scan", value=_odds_ready,
+                              disabled=not _odds_ready,
+                              help="Сравнить наши прошлые predictions с current market "
+                                   "odds для каждого боя на live card.")
+
+    # ----- Value Edge Scanner (auto-comparison) -----
+    if show_value and _odds_ready:
+        try:
+            from odds_provider import get_ufc_events, find_fight_odds
+            from odds_engine import (analyze_fight_odds,
+                                       remove_vig_two_way, implied_prob)
+            with st.spinner("📡 Pull market odds..."):
+                events_odds = get_ufc_events(force_refresh=False)
+
+            # Сканируем history → ищем pending predictions с матчами в odds
+            scan_rows = []
+            for h in st.session_state.history:
+                if h.get("status") != "pending":
+                    continue
+                fa_n = h.get("fa", "")
+                fb_n = h.get("fb", "")
+                if not (fa_n and fb_n):
+                    continue
+                match = find_fight_odds(fa_n, fb_n, events_odds)
+                if not match:
+                    continue
+                # Наша prob
+                our_a = h.get("hybrid", {}).get("final_prob_a") if h.get("hybrid") else None
+                if our_a is None and h.get("win_prob") is not None:
+                    pw = h.get("predicted_winner", "")
+                    if pw and (pw.lower() in fa_n.lower() or fa_n.lower() in pw.lower()):
+                        our_a = h["win_prob"]
+                    elif pw:
+                        our_a = 1.0 - h["win_prob"]
+                if our_a is None:
+                    continue
+                our_b = 1.0 - our_a
+
+                mp_a, mp_b = remove_vig_two_way(match["odds_a"], match["odds_b"])
+                edge_a = our_a - mp_a
+                edge_b = our_b - mp_b
+                # Bullish сторона
+                if edge_a > edge_b:
+                    side = fa_n
+                    side_odds = match["odds_a"]
+                    side_edge = edge_a
+                    side_our = our_a
+                else:
+                    side = fb_n
+                    side_odds = match["odds_b"]
+                    side_edge = edge_b
+                    side_our = our_b
+                if side_edge < -0.02:
+                    continue  # нет value
+                scan_rows.append({
+                    " ": ("💰" if side_edge >= 0.05 else
+                          "✅" if side_edge >= 0.02 else "🟡"),
+                    "Бой": f"{fa_n} vs {fb_n}",
+                    "Value side": side,
+                    "Best odds": f"{side_odds:.2f}",
+                    "Our prob": f"{side_our*100:.1f}%",
+                    "Implied": f"{implied_prob(side_odds)*100:.1f}%",
+                    "Edge": f"{side_edge*100:+.1f}%",
+                })
+            if scan_rows:
+                st.markdown("### 💰 Value Edge Scanner — pending predictions vs live odds")
+                scan_rows.sort(key=lambda r: float(r["Edge"].replace("%", "")), reverse=True)
+                st.dataframe(pd.DataFrame(scan_rows),
+                              use_container_width=True, hide_index=True)
+            else:
+                st.caption("🟡 Нет +EV value на pending predictions сейчас. "
+                            "Сделай прогноз в **🔮 Predictor** — потом увидишь его здесь.")
+        except Exception as e:
+            st.caption(f"Value scan недоступен: {e}")
 
     try:
         live_events = get_live_events()
@@ -2498,6 +2595,16 @@ elif page == "🔮 Predictor":
                         "intel_modifier": intel_mod_info,
                         "status": "pending",
                     }
+
+                    # --- Market odds snapshot (если был pull) — для CLV ---
+                    pulled_odds = st.session_state.get("odds_pulled")
+                    if (pulled_odds and pulled_odds.get("fighter_a") == fa["name"]
+                            and pulled_odds.get("fighter_b") == fb["name"]):
+                        try:
+                            from clv_tracker import attach_market_odds_snapshot
+                            record = attach_market_odds_snapshot(record, pulled_odds)
+                        except Exception:
+                            pass
                     st.session_state.last_analysis = record
 
                     # АВТОСЕЙВ ВСЕГДА. Дедуп по (fa, fb, event, дата-минута).
@@ -2691,15 +2798,71 @@ elif page == "🔮 Predictor":
         ip4.metric("Submission", f"{sub_w*100:.0f}%")
         ip5.metric("Decision", f"{dec_w*100:.0f}%")
 
-        st.markdown("##### 🎲 Введи рыночные коэффициенты")
+        st.markdown("##### 🎲 Рыночные коэффициенты")
+
+        # ----- Real-time pull from TheOddsAPI -----
+        try:
+            from odds_provider import (is_available as _odds_avail,
+                                         get_ufc_events, find_fight_odds)
+            odds_api_ready = _odds_avail()
+        except Exception:
+            odds_api_ready = False
+
+        if odds_api_ready:
+            pl1, pl2 = st.columns([1, 3])
+            if pl1.button("🔄 Pull live odds", use_container_width=True,
+                           key="pull_live_odds",
+                           help="Fetch текущих коэфов с TheOddsAPI (кеш 30 мин)"):
+                try:
+                    with st.spinner("📡 Запрашиваю TheOddsAPI..."):
+                        events = get_ufc_events(force_refresh=True)
+                        match = find_fight_odds(fa["name"], fb["name"], events)
+                    if match:
+                        st.session_state["odds_pulled"] = match
+                        st.success(
+                            f"✅ Найдено в {match['n_books']} книгах · "
+                            f"best: {fa['name']} @ {match['odds_a']:.2f} · "
+                            f"{fb['name']} @ {match['odds_b']:.2f}"
+                        )
+                        st.rerun()
+                    else:
+                        st.warning(
+                            "Не нашёл этот бой в live-карте TheOddsAPI. "
+                            "Возможно, не открыли линию ещё, или имена не совпадают."
+                        )
+                except Exception as e:
+                    st.error(f"API error: {e}")
+            with pl2:
+                pulled = st.session_state.get("odds_pulled")
+                if pulled and pulled.get("fighter_a") == fa["name"]:
+                    bk_str = " · ".join(
+                        f"{v['title'][:8]}: {v['odds_a']:.2f}/{v['odds_b']:.2f}"
+                        for k, v in list(pulled.get("bookmakers", {}).items())[:4]
+                    )
+                    st.caption(f"📊 {bk_str}")
+        else:
+            st.caption(
+                "💡 Set `THE_ODDS_API_KEY` in `.env.local` для **🔄 Pull live odds** "
+                "(free 500 req/мес на the-odds-api.com)."
+            )
+
+        # Pre-fill из pulled odds
+        pulled = st.session_state.get("odds_pulled")
+        default_a = (pulled.get("odds_a") if (pulled
+            and pulled.get("fighter_a") == fa["name"]) else 2.00)
+        default_b = (pulled.get("odds_b") if (pulled
+            and pulled.get("fighter_b") == fb["name"]) else 2.00)
+
         oc1, oc2 = st.columns(2)
         with oc1:
             st.markdown(f"**{fa['name']}**")
-            ml_a = st.number_input(f"ML — {fa['name']}", 1.01, 50.0, 2.00, 0.01,
+            ml_a = st.number_input(f"ML — {fa['name']}", 1.01, 50.0,
+                                    float(default_a), 0.01,
                                     key="odds_ml_a", format="%.2f")
         with oc2:
             st.markdown(f"**{fb['name']}**")
-            ml_b = st.number_input(f"ML — {fb['name']}", 1.01, 50.0, 2.00, 0.01,
+            ml_b = st.number_input(f"ML — {fb['name']}", 1.01, 50.0,
+                                    float(default_b), 0.01,
                                     key="odds_ml_b", format="%.2f")
 
         # Method/Total props (опционально)
@@ -3356,6 +3519,579 @@ _OLD_DEAD_BLOCK = """
         st.session_state.history = []
         persist_history(); st.rerun()
 """
+
+
+# =================================================================
+# PAGE: BACKTESTING (Phase 3)
+# =================================================================
+if page == "🧪 Backtesting":
+    st.markdown("## 🧪 Backtesting Harness")
+    st.caption("Оффлайн прогон по разрешённой истории прогнозов. LLM не зовётся.")
+
+    from backtest import run_backtest
+
+    hist = st.session_state.history or []
+    resolved_n = sum(1 for h in hist if h.get("tracked") and h.get("result") in ("won","lost"))
+    if resolved_n == 0:
+        st.info("Нет разрешённых прогнозов. Резолвни хотя бы 1 во вкладке History & Accuracy.")
+        st.stop()
+
+    # Filters
+    fcol1, fcol2, fcol3 = st.columns(3)
+    divisions = sorted({(h.get("ctx") or {}).get("division") or h.get("weight_class") or "—"
+                        for h in hist if h.get("tracked")})
+    div_sel = fcol1.multiselect("Дивизион", divisions, default=divisions)
+    min_conf = fcol2.slider("Min уверенность модели (%)", 50, 95, 50, step=5)
+    window = fcol3.slider("Rolling window", 5, 50, 10, step=5)
+
+    def _flt(h):
+        if not (h.get("tracked") and h.get("result") in ("won","lost")):
+            return False
+        d = (h.get("ctx") or {}).get("division") or h.get("weight_class") or "—"
+        if d not in div_sel:
+            return False
+        p = h.get("win_prob")
+        try:
+            if p is not None and float(p) * 100 < min_conf:
+                return False
+        except Exception:
+            pass
+        return True
+
+    rep = run_backtest(hist, filter_fn=_flt, window=window)
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("📋 В выборке", rep.n_resolved)
+    c2.metric("🎯 Accuracy", f"{rep.accuracy_pct:.1f}%" if rep.accuracy_pct is not None else "—")
+    c3.metric("📉 Brier", f"{rep.brier:.3f}" if rep.brier is not None else "—",
+              help="Меньше=лучше. 0=идеал, 0.25=случайно.")
+    c4.metric("📐 LogLoss", f"{rep.log_loss:.3f}" if rep.log_loss is not None else "—")
+    if rep.roi.get("roi_pct") is not None:
+        c5.metric("💰 ROI", f"{rep.roi['roi_pct']:+.1f}%",
+                  help=f"n_bets={rep.roi['n_bets']}, profit={rep.roi['profit']:+.2f}u")
+    else:
+        c5.metric("💰 ROI", "—", help="Нет записей с bet_odds.")
+
+    st.markdown("---")
+    st.markdown("### 📈 Rolling метрики по времени")
+    if not rep.over_time.empty:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=rep.over_time["n"], y=rep.over_time["rolling_acc_%"],
+                                 name="Rolling Acc %", line=dict(color=UFC_RED, width=3)))
+        fig.add_trace(go.Scatter(x=rep.over_time["n"], y=rep.over_time["rolling_brier"]*100,
+                                 name="Rolling Brier ×100", line=dict(color=UFC_GOLD, dash="dash")))
+        fig.update_layout(paper_bgcolor=BG, plot_bgcolor=BG, font=dict(color=TEXT),
+                          height=340, margin=dict(t=10, b=40),
+                          xaxis=dict(title="N (хронологически)"), yaxis=dict(title="Значение"))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("Недостаточно данных для графика.")
+
+    bcol1, bcol2 = st.columns(2)
+    with bcol1:
+        st.markdown("### 🥋 По дивизионам")
+        if not rep.by_division.empty:
+            st.dataframe(rep.by_division, use_container_width=True, hide_index=True)
+        else:
+            st.caption("—")
+    with bcol2:
+        st.markdown("### 🎚️ По уверенности")
+        if not rep.by_confidence.empty:
+            st.dataframe(rep.by_confidence, use_container_width=True, hide_index=True)
+        else:
+            st.caption("—")
+
+    with st.expander("📤 Export report (JSON)"):
+        import json as _json
+        payload = {
+            "n_total": rep.n_total, "n_resolved": rep.n_resolved,
+            "accuracy_pct": rep.accuracy_pct, "brier": rep.brier,
+            "log_loss": rep.log_loss, "roi": rep.roi,
+            "by_division": rep.by_division.to_dict("records"),
+            "by_confidence": rep.by_confidence.to_dict("records"),
+        }
+        st.download_button("⬇️ backtest_report.json",
+            data=_json.dumps(payload, indent=2, default=str),
+            file_name="backtest_report.json", mime="application/json")
+
+
+# =================================================================
+# PAGE: MODEL HEALTH (Phase 5)
+# =================================================================
+if page == "❤️ Model Health":
+    st.markdown("## ❤️ Model Health & Auto-Retrain")
+    st.caption("Мониторинг деградации модели и автопереобучение ML при drift.")
+
+    from model_health import (evaluate_health, auto_retrain_if_needed,
+                              can_retrain_now, _load_state, THRESHOLDS)
+
+    hist = st.session_state.history or []
+    window = st.slider("Rolling window (последние N разрешённых)", 5, 50, 20, step=5)
+    health = evaluate_health(hist, window=window)
+
+    status = health["status"]
+    status_color = {"healthy": "#16a34a", "warn": UFC_GOLD,
+                    "critical": UFC_RED, "unknown": MUTED}.get(status, MUTED)
+    st.markdown(
+        f"<div style='padding:14px;border-radius:8px;background:{status_color}22;"
+        f"border-left:4px solid {status_color};margin-bottom:14px'>"
+        f"<b style='color:{status_color};font-size:1.1rem'>Status: {status.upper()}</b>"
+        f"</div>", unsafe_allow_html=True)
+
+    stats = health["stats"]
+    if not stats.get("insufficient"):
+        r, b = stats["recent"], stats["baseline"]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Recent N", r["n"])
+        c2.metric("Recent Acc",
+                  f"{r['accuracy_%']:.1f}%" if r["accuracy_%"] is not None else "—",
+                  delta=(f"{(r['accuracy_%'] - b['accuracy_%']):+.1f}pp"
+                         if r["accuracy_%"] is not None and b["accuracy_%"] is not None else None))
+        c3.metric("Recent Brier",
+                  f"{r['brier']:.3f}" if r["brier"] is not None else "—",
+                  delta=(f"{(r['brier'] - b['brier']):+.3f}"
+                         if r["brier"] is not None and b["brier"] is not None else None),
+                  delta_color="inverse")
+        c4.metric("Recent ROI",
+                  f"{r['roi_pct']:+.1f}%" if r["roi_pct"] is not None else "—",
+                  help=f"n_bets={r['n_bets']}")
+
+    if health["alerts"]:
+        st.markdown("### 🚨 Алерты")
+        for a in health["alerts"]:
+            icon = {"critical": "🔴", "warn": "🟡", "info": "ℹ️"}.get(a["level"], "•")
+            st.markdown(f"- {icon} **{a['code']}** — {a['message']}")
+    else:
+        st.success("✅ Все метрики в зелёной зоне.")
+
+    st.markdown("---")
+    st.markdown("### 🔁 Retrain ML model")
+    ok, msg = can_retrain_now()
+    state = _load_state()
+    if state.get("last_retrain_iso"):
+        st.caption(f"Последний retrain: `{state['last_retrain_iso']}`.")
+    if not ok:
+        st.warning(msg)
+
+    colr1, colr2 = st.columns(2)
+
+    def _do_retrain():
+        from ml_model import assemble_training_data, train_models
+        td = assemble_training_data(st.session_state.fighters, st.session_state.history)
+        return train_models(td)
+
+    if colr1.button("🤖 Auto-retrain (только если drift)",
+                    disabled=not ok, use_container_width=True):
+        with st.spinner("Проверяю health и обучаю..."):
+            res = auto_retrain_if_needed(hist, _do_retrain, force=False, window=window)
+        if res["retrained"]:
+            st.success(f"✅ Retrained! Meta: {res.get('meta')}")
+        else:
+            st.info(f"⏭️ Skipped — {res['reason']}")
+
+    if colr2.button("⚡ Force retrain сейчас", disabled=not ok, use_container_width=True):
+        with st.spinner("Force retraining..."):
+            res = auto_retrain_if_needed(hist, _do_retrain, force=True, window=window)
+        if res["retrained"]:
+            st.success(f"✅ Retrained! Meta: {res.get('meta')}")
+        else:
+            st.error(f"❌ {res['reason']}")
+
+    with st.expander("⚙️ Пороги (config)"):
+        st.json(THRESHOLDS)
+
+
+# =================================================================
+# PAGE: BLIND TESTS — модель прогнозирует ивент не зная результатов
+# =================================================================
+if page == "🎯 Blind Tests":
+    st.markdown("## 🎯 Blind Tests")
+    st.caption("Прогон модели на ивенте без знания исходов → грейдинг по факту → "
+               "иммутабельный лог в `blind_tests/`. Так видно, насколько модель "
+               "реально умеет читать карды, без data leakage.")
+
+    import blind_test as bt
+    from live_data import get_events_range, parse_event, fetch_espn_scoreboard
+
+    tab_new, tab_history, tab_compare = st.tabs(
+        ["🆕 New Blind Run", "📜 History & Grading", "🆚 Compare Runs"])
+
+    # ---------- NEW RUN ----------
+    with tab_new:
+        st.markdown("### 1️⃣ Выбери ивент")
+        col1, col2 = st.columns([1, 1])
+        date_from = col1.date_input("От", value=date.today() - timedelta(days=30))
+        date_to = col2.date_input("До", value=date.today() + timedelta(days=30))
+
+        events = []
+        try:
+            events = get_events_range(date_from.strftime("%Y%m%d"),
+                                      date_to.strftime("%Y%m%d"))
+        except Exception as e:
+            st.error(f"ESPN error: {e}")
+
+        if not events:
+            st.info("Ивентов в диапазоне нет. Расширь даты.")
+        else:
+            labels = [f"{e.get('date','')[:10]} — {e['name']} ({len(e.get('fights',[]))} fights)"
+                      for e in events]
+            sel = st.selectbox("Ивент", range(len(events)), format_func=lambda i: labels[i])
+            ev = events[sel]
+            st.markdown(f"**🏟 Venue:** {ev.get('venue','—')}  |  **🆔 ESPN ID:** `{ev.get('id')}`")
+
+            # Проверка существующего blind-test файла
+            existing = bt.file_for(ev["name"], ev.get("date",""))
+            if existing.exists():
+                st.warning(f"⚠️ Blind test для этого ивента уже существует: `{existing.name}`. "
+                           f"Запуск перезапишет его. Используй вкладку History для просмотра.")
+
+            n_completed = sum(1 for f in ev["fights"] if f.get("completed"))
+            st.markdown(
+                f"**Бои в карде:** {len(ev['fights'])} "
+                f"({n_completed} уже завершено по ESPN — будут blinded для модели)"
+            )
+            with st.expander("📋 Полный ростер (с реальными результатами — для тебя)"):
+                for f in ev["fights"]:
+                    a = (f.get("a") or {}).get("name","?")
+                    b = (f.get("b") or {}).get("name","?")
+                    wc = f.get("weight_class","")
+                    res = (f"✅ winner: {(f.get('a') or {}).get('name') if (f.get('a') or {}).get('winner') else (f.get('b') or {}).get('name')} "
+                           f"by {f.get('method','?')} R{f.get('round','?')}") if f.get("completed") else "🕒 not finished"
+                    st.markdown(f"- **{a} vs {b}** ({wc}) — {res}")
+
+            st.markdown("### 2️⃣ Конфиг прогона")
+            ccol1, ccol2 = st.columns(2)
+            delay = ccol1.number_input("Пауза между боями (сек, rate-limit)",
+                                       0.0, 10.0, 1.5, step=0.5)
+            use_demo = ccol2.checkbox("Demo mode (без LLM, заглушка)",
+                                      value=not bool(LLM_API_KEY))
+
+            if st.button("🚀 Запустить Blind Test", type="primary",
+                         use_container_width=True):
+                blinded_fights = bt.blind_fights(ev["fights"])
+                progress = st.progress(0.0)
+                status = st.empty()
+
+                def _predict(fa, fb, ctx):
+                    if use_demo:
+                        out = demo_analysis(fa, fb, ctx, "")
+                    else:
+                        out = get_fight_prediction(fa, fb, ctx, "",
+                                                   LLM_API_KEY, LLM_BASE_URL, LLM_MODEL)
+                    probs = extract_probabilities(out)
+                    return {
+                        "predicted_winner": extract_predicted_winner(out),
+                        "win_prob": probs.get("win_prob"),
+                        "method": (
+                            "KO/TKO" if (probs.get("ko_prob") or 0) >= max(
+                                probs.get("sub_prob") or 0, probs.get("dec_prob") or 0)
+                            else "Submission" if (probs.get("sub_prob") or 0) >= (probs.get("dec_prob") or 0)
+                            else "Decision"
+                        ) if any([probs.get("ko_prob"), probs.get("sub_prob"), probs.get("dec_prob")]) else None,
+                        "round": None,
+                        "reasoning": out,
+                    }
+
+                def _cb(i, total, msg):
+                    progress.progress(i / total)
+                    status.markdown(f"🔮 **{i}/{total}** — {msg}")
+
+                path = bt.run_blind_test(
+                    event_name=ev["name"],
+                    event_date=ev.get("date",""),
+                    fights=blinded_fights,
+                    predict_fn=_predict,
+                    model_meta={"llm_model": LLM_MODEL,
+                                "system_prompt_version": "v3",
+                                "demo": use_demo},
+                    venue=ev.get("venue",""),
+                    espn_id=ev.get("id"),
+                    delay_s=delay,
+                    progress_cb=_cb,
+                )
+                progress.progress(1.0)
+                status.success(f"✅ Blind test сохранён → `{path}`")
+                st.balloons()
+
+    # ---------- HISTORY ----------
+    with tab_history:
+        st.markdown("### 📜 Все blind-tests")
+        tests = bt.list_tests()
+        if not tests:
+            st.info("Ещё ни одного blind-test не запущено. Перейди во вкладку **🆕 New Blind Run**.")
+        else:
+            rows = []
+            for p in tests:
+                try:
+                    d = bt.load_test(p)
+                except Exception:
+                    continue
+                rows.append({
+                    "file": p.name, "path": str(p),
+                    "event": d["event"]["name"],
+                    "date": d["event"]["date"][:10],
+                    "model": d.get("model_meta", {}).get("llm_model","—"),
+                    "n": d["summary"]["n"],
+                    "graded": d["summary"]["n_graded"],
+                    "accuracy_%": d["summary"]["accuracy_%"],
+                    "brier": d["summary"]["brier"],
+                })
+            df = pd.DataFrame(rows)
+            st.dataframe(df.drop(columns=["path"]), use_container_width=True, hide_index=True)
+
+            sel_file = st.selectbox("Открыть test", [r["file"] for r in rows])
+            sel_path = next(r["path"] for r in rows if r["file"] == sel_file)
+            data = bt.load_test(Path(sel_path))
+
+            st.markdown(f"### 🏷 {data['event']['name']}")
+            cc1, cc2, cc3, cc4 = st.columns(4)
+            cc1.metric("Боёв", data["summary"]["n"])
+            cc2.metric("Грейдинг", data["summary"]["n_graded"])
+            acc = data["summary"]["accuracy_%"]
+            cc3.metric("Accuracy", f"{acc:.1f}%" if acc is not None else "—")
+            brier = data["summary"]["brier"]
+            cc4.metric("Brier", f"{brier:.3f}" if brier is not None else "—")
+
+            # Грейдинг кнопка
+            if st.button("🔄 Pull ESPN results & grade this test"):
+                espn_id = data["event"].get("espn_id")
+                try:
+                    raw = fetch_espn_scoreboard(
+                        data["event"]["date"][:10].replace("-","")
+                    )
+                    matched_ev = None
+                    for e in raw.get("events", []):
+                        if str(e.get("id")) == str(espn_id):
+                            matched_ev = parse_event(e); break
+                    if not matched_ev:
+                        # fallback: ищем по имени
+                        for e in raw.get("events", []):
+                            p = parse_event(e)
+                            if p["name"] == data["event"]["name"]:
+                                matched_ev = p; break
+                    if matched_ev:
+                        summ = bt.grade_test(Path(sel_path), matched_ev["fights"])
+                        st.success(f"✅ Graded: {summ['n_graded']}/{summ['n']}, "
+                                   f"acc={summ['accuracy_%']}, brier={summ['brier']}")
+                        st.rerun()
+                    else:
+                        st.error("ESPN event не найден для этой даты.")
+                except Exception as e:
+                    st.error(f"Grading error: {e}")
+
+            st.markdown("---")
+            st.markdown("### 🥊 Прогнозы по боям")
+            for rec in data["predictions"]:
+                graded = rec.get("graded")
+                icon = "✅" if rec.get("correct") else "❌" if graded else "⏳"
+                with st.expander(
+                    f"{icon} {rec['fighter_a']} vs {rec['fighter_b']} ({rec.get('weight_class','—')})"):
+                    cA, cB = st.columns(2)
+                    with cA:
+                        st.markdown("**🔮 Predicted**")
+                        st.markdown(f"- Winner: **{rec.get('predicted_winner') or '—'}**")
+                        wp = rec.get("win_prob")
+                        st.markdown(f"- Confidence: **{wp*100:.0f}%**" if wp else "- Confidence: —")
+                        st.markdown(f"- Method: {rec.get('method') or '—'}")
+                        st.markdown(f"- Odds (a/b): {rec.get('odds_a') or '—'} / {rec.get('odds_b') or '—'}")
+                    with cB:
+                        st.markdown("**📊 Actual**")
+                        if graded:
+                            st.markdown(f"- Winner: **{rec.get('actual_winner') or '—'}**")
+                            st.markdown(f"- Method: {rec.get('actual_method') or '—'}")
+                            st.markdown(f"- Round: {rec.get('actual_round') or '—'}")
+                            br = rec.get("brier")
+                            if br is not None:
+                                st.markdown(f"- Brier: **{br:.3f}**")
+                        else:
+                            st.markdown("_Не грейднут. Нажми Pull & grade._")
+                    if rec.get("reasoning"):
+                        with st.expander("🧠 Reasoning"):
+                            st.markdown(rec["reasoning"])
+
+                    # ---- Извлечь урок из промаха ----
+                    if graded and rec.get("correct") is False:
+                        from lessons import add_lesson
+                        with st.expander("📝 Извлечь урок из этого промаха"):
+                            lt = st.text_input(
+                                "Заголовок урока",
+                                key=f"lt_{rec['fighter_a']}_{rec['fighter_b']}",
+                                placeholder="Напр.: Старый ветеран vs молодой нокаутер")
+                            lb = st.text_area(
+                                "Описание правила",
+                                key=f"lb_{rec['fighter_a']}_{rec['fighter_b']}",
+                                placeholder="Что модель не учла и что должна была учесть.",
+                                height=100)
+                            lk = st.text_input(
+                                "Trigger keywords (через запятую)",
+                                key=f"lk_{rec['fighter_a']}_{rec['fighter_b']}",
+                                placeholder="35+, chin, prospect, перт")
+                            if st.button("➕ Сохранить урок",
+                                         key=f"savel_{rec['fighter_a']}_{rec['fighter_b']}"):
+                                if lt and lb:
+                                    add_lesson(
+                                        lt, lb,
+                                        tags=[],
+                                        trigger_keywords=[k.strip() for k in lk.split(",") if k.strip()],
+                                        source=f"blind_test:{Path(sel_path).name}",
+                                    )
+                                    st.success("✅ Урок сохранён в lessons.json")
+                                else:
+                                    st.warning("Заполни title и body.")
+
+            st.markdown("---")
+            st.download_button("⬇️ Export JSON",
+                data=json.dumps(data, indent=2, ensure_ascii=False, default=str),
+                file_name=Path(sel_path).name,
+                mime="application/json")
+
+    # ---------- COMPARE RUNS ----------
+    with tab_compare:
+        st.markdown("### 🆚 Сравнить несколько прогонов одного ивента")
+        st.caption("Группирует blind-tests по ESPN event id. Показывает дельту "
+                   "метрик и per-fight разницу.")
+        tests = bt.list_tests()
+        if not tests:
+            st.info("Нет blind-tests для сравнения.")
+        else:
+            # группировка по espn_id
+            groups = {}
+            for p in tests:
+                try:
+                    d = bt.load_test(p)
+                except Exception:
+                    continue
+                key = d["event"].get("espn_id") or d["event"]["name"].split(" [")[0]
+                groups.setdefault(key, []).append((p, d))
+
+            gkeys = [k for k, v in groups.items() if len(v) >= 2]
+            if not gkeys:
+                st.info("Пока только 1 прогон на ивент. Сделай второй (с другим "
+                        "промптом/агентами/lessons) — тогда появится сравнение.")
+            else:
+                def _label(k):
+                    d = groups[k][0][1]
+                    return f"{d['event']['date'][:10]} — {d['event']['name'].split(' [')[0]}  ({len(groups[k])} runs)"
+                sel_group = st.selectbox("Ивент", gkeys, format_func=_label)
+                runs = groups[sel_group]
+
+                # summary table
+                summary_rows = []
+                for path, d in runs:
+                    s = d["summary"]
+                    meta = d.get("model_meta", {})
+                    summary_rows.append({
+                        "file": path.name,
+                        "version": meta.get("system_prompt_version", "—"),
+                        "model": meta.get("llm_model", "—"),
+                        "lessons": "✅" if meta.get("lessons_injected") or "lessons" in str(meta.get("system_prompt_version","")) else "—",
+                        "n": s["n"], "graded": s["n_graded"],
+                        "accuracy_%": s.get("accuracy_%"),
+                        "brier": s.get("brier"),
+                    })
+                st.dataframe(pd.DataFrame(summary_rows),
+                             use_container_width=True, hide_index=True)
+
+                # Bar chart comparing metrics
+                cmp_fig = go.Figure()
+                labels = [r["version"] for r in summary_rows]
+                accs = [r["accuracy_%"] or 0 for r in summary_rows]
+                briers = [(r["brier"] or 0) * 100 for r in summary_rows]
+                cmp_fig.add_trace(go.Bar(name="Accuracy %", x=labels, y=accs,
+                                         marker_color=UFC_RED))
+                cmp_fig.add_trace(go.Bar(name="Brier ×100", x=labels, y=briers,
+                                         marker_color=UFC_GOLD))
+                cmp_fig.update_layout(barmode="group",
+                    paper_bgcolor=BG, plot_bgcolor=BG, font=dict(color=TEXT),
+                    height=320, margin=dict(t=10, b=40))
+                st.plotly_chart(cmp_fig, use_container_width=True)
+
+                st.markdown("---")
+                st.markdown("### 🥊 Per-fight сравнение")
+                # Собираем все бои с прогнозами всех runs
+                # ключ: (fighter_a, fighter_b)
+                fight_map = {}
+                for path, d in runs:
+                    for rec in d["predictions"]:
+                        k = (rec["fighter_a"], rec["fighter_b"])
+                        fight_map.setdefault(k, {})
+                        fight_map[k][d.get("model_meta",{}).get("system_prompt_version","run")] = rec
+
+                # Строим сравнительную таблицу
+                comp_rows = []
+                for (a, b), by_run in fight_map.items():
+                    row = {"bout": f"{a} vs {b}"}
+                    actual = None
+                    for ver, rec in by_run.items():
+                        wp = rec.get("win_prob")
+                        wp_s = f"{wp*100:.0f}%" if wp else "—"
+                        ok = rec.get("correct")
+                        icon = "✅" if ok else "❌" if rec.get("graded") else "⏳"
+                        row[ver] = f"{icon} {rec.get('predicted_winner','—')} ({wp_s})"
+                        if rec.get("graded") and actual is None:
+                            actual = rec.get("actual_winner")
+                    row["actual"] = actual or "—"
+                    comp_rows.append(row)
+                st.dataframe(pd.DataFrame(comp_rows),
+                             use_container_width=True, hide_index=True)
+
+
+# =================================================================
+# PAGE: LESSONS — память ошибок модели
+# =================================================================
+if page == "📖 Lessons":
+    st.markdown("## 📖 Lessons Memory")
+    st.caption("Персистентные уроки извлечённые из промахов. Автоматически "
+               "инжектятся в промпт перед каждым прогнозом если совпадают "
+               "trigger keywords.")
+
+    from lessons import (load_lessons, add_lesson, remove_lesson,
+                          toggle_lesson, save_lessons)
+
+    lessons = load_lessons()
+    active = sum(1 for l in lessons if l.get("active", True))
+    mc1, mc2 = st.columns(2)
+    mc1.metric("📚 Всего уроков", len(lessons))
+    mc2.metric("✅ Активных", active)
+
+    st.markdown("---")
+    st.markdown("### ➕ Добавить новый урок")
+    with st.form("new_lesson", clear_on_submit=True):
+        nt = st.text_input("Заголовок", placeholder="Напр.: Home crowd bias в Австралии")
+        nb = st.text_area("Правило", height=120,
+            placeholder="Опиши паттерн чётко. Когда срабатывает, что делать.")
+        nk = st.text_input("Trigger keywords (через запятую)",
+            placeholder="perth, sydney, australia, австрал")
+        ntags = st.text_input("Tags (через запятую)",
+            placeholder="home_bias, judge_bias")
+        if st.form_submit_button("➕ Сохранить"):
+            if nt and nb:
+                add_lesson(nt, nb,
+                    tags=[t.strip() for t in ntags.split(",") if t.strip()],
+                    trigger_keywords=[k.strip() for k in nk.split(",") if k.strip()],
+                    source="manual")
+                st.success("✅ Урок добавлен"); st.rerun()
+            else:
+                st.warning("Title и body обязательны.")
+
+    st.markdown("---")
+    st.markdown("### 📜 Все уроки")
+    for l in lessons:
+        active_emoji = "🟢" if l.get("active", True) else "⚪"
+        with st.expander(f"{active_emoji} {l['title']}"):
+            st.markdown(l["body"])
+            if l.get("tags"):
+                st.markdown("**Tags:** " + ", ".join(f"`{t}`" for t in l["tags"]))
+            if l.get("trigger_keywords"):
+                st.markdown("**Triggers:** " + ", ".join(f"`{k}`" for k in l["trigger_keywords"]))
+            st.caption(f"id: `{l['id']}` · source: `{l.get('source','—')}` · "
+                       f"created: {l.get('created_at','—')}")
+            c1, c2 = st.columns(2)
+            if c1.button(("🔇 Деактивировать" if l.get("active", True)
+                          else "🔊 Активировать"), key=f"tog_{l['id']}"):
+                toggle_lesson(l["id"]); st.rerun()
+            if c2.button("🗑️ Удалить", key=f"del_{l['id']}"):
+                remove_lesson(l["id"]); st.rerun()
 
 
 # Footer
