@@ -40,11 +40,20 @@ WINNER_MODEL_PATH = MODELS_DIR / "winner_model.json"
 METHOD_MODEL_PATH = MODELS_DIR / "method_model.json"
 META_PATH = MODELS_DIR / "meta.json"
 
-FEATURE_NAMES = [
+CORE_FEATURE_NAMES = [
     "age_diff", "slpm_diff", "sapm_diff", "stracc_diff", "strdef_diff",
     "tdavg_diff", "tddef_diff", "subavg_diff", "reach_diff", "height_diff",
     "winrate_a", "winrate_b", "exp_diff", "stance_match",
 ]
+QOO_FEATURE_NAMES = [
+    "opp_quality_diff", "recent_opp_strength_diff", "ufc_experience_diff",
+    "rookie_penalty_diff", "top15_wins_diff", "loss_quality_diff",
+]
+INTEL_FEATURE_NAMES = [
+    "weight_cut_severity_diff", "injury_severity_diff", "camp_drama_diff",
+    "acclimatization_diff", "inactivity_diff",
+]
+FEATURE_NAMES = CORE_FEATURE_NAMES + QOO_FEATURE_NAMES + INTEL_FEATURE_NAMES
 METHOD_CLASSES = ["KO/TKO", "Submission", "Decision"]
 
 
@@ -80,9 +89,14 @@ def _exp(record: str) -> int:
     return w + l + d
 
 
-def build_features(fa: dict, fb: dict) -> np.ndarray:
-    """Вычисляем feature vector A vs B (разности метрик + winrates)."""
-    feats = [
+def build_features(fa: dict, fb: dict,
+                    qoo_a: dict | None = None, qoo_b: dict | None = None,
+                    intel_a: dict | None = None, intel_b: dict | None = None
+                    ) -> np.ndarray:
+    """Полный feature vector (25 фич). Все QoO/Intel опциональны — если
+    None, фичи заполняются нулями (нейтрально). Это сохраняет обратную
+    совместимость со старыми вызовами."""
+    core = [
         _to_float(fa.get("age", 30)) - _to_float(fb.get("age", 30)),
         _to_float(fa.get("SLpM")) - _to_float(fb.get("SLpM")),
         _to_float(fa.get("SApM")) - _to_float(fb.get("SApM")),
@@ -98,7 +112,31 @@ def build_features(fa: dict, fb: dict) -> np.ndarray:
         _exp(fa.get("record", "")) - _exp(fb.get("record", "")),
         1.0 if fa.get("stance") == fb.get("stance") else 0.0,
     ]
-    return np.array(feats, dtype=float)
+
+    # QoO diff features
+    def _q(q, k, default=0.0):
+        if not q:
+            return default
+        return float(q.get(k, default) or default)
+
+    qoo = [
+        _q(qoo_a, "opp_quality_score", 0.5) - _q(qoo_b, "opp_quality_score", 0.5),
+        _q(qoo_a, "recent_opp_strength", 0.5) - _q(qoo_b, "recent_opp_strength", 0.5),
+        _q(qoo_a, "ufc_fights_count") - _q(qoo_b, "ufc_fights_count"),
+        _q(qoo_b, "rookie_penalty") - _q(qoo_a, "rookie_penalty"),  # +ve если против дебютанта
+        _q(qoo_a, "top15_wins") - _q(qoo_b, "top15_wins"),
+        _q(qoo_a, "loss_quality_score", 0.5) - _q(qoo_b, "loss_quality_score", 0.5),
+    ]
+
+    # Intel diff features
+    try:
+        from intel_ingest import extract_intel_features
+        intel_dict = extract_intel_features(intel_a, intel_b)
+        intel = [intel_dict[k] for k in INTEL_FEATURE_NAMES]
+    except Exception:
+        intel = [0.0] * len(INTEL_FEATURE_NAMES)
+
+    return np.array(core + qoo + intel, dtype=float)
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +302,8 @@ def train_models(training: dict) -> dict:
     fi = {}
     try:
         importances = winner_clf.feature_importances_
-        fi = {FEATURE_NAMES[i]: float(importances[i]) for i in range(len(FEATURE_NAMES))}
+        n_imp = min(len(importances), len(FEATURE_NAMES))
+        fi = {FEATURE_NAMES[i]: float(importances[i]) for i in range(n_imp)}
     except Exception:
         pass
 
@@ -282,15 +321,18 @@ def train_models(training: dict) -> dict:
             with open(METHOD_MODEL_PATH.with_suffix(".pkl"), "wb") as f:
                 pickle.dump(method_clf, f)
 
+    from datetime import datetime as _dt
     meta = {
         "backend": _BACKEND,
         "n_samples": int(len(X)),
+        "feature_count": int(X.shape[1]),
         "winner_train_accuracy": train_acc_win,
         "method": method_meta,
         "feature_importance": fi,
-        "feature_names": FEATURE_NAMES,
+        "feature_names": FEATURE_NAMES[:int(X.shape[1])],
         "method_classes": METHOD_CLASSES,
         "skipped_during_assembly": int(training.get("skipped", 0)),
+        "trained_at": _dt.now().isoformat(timespec="seconds"),
     }
     META_PATH.write_text(json.dumps(meta, indent=2, ensure_ascii=False))
     return meta
@@ -336,8 +378,16 @@ def load_models() -> dict | None:
         return _loaded["meta"]
 
 
-def predict_ml(fa: dict, fb: dict) -> dict:
-    """ML-предсказание боя A vs B. Returns:
+def predict_ml(fa: dict, fb: dict,
+                qoo_a: dict | None = None, qoo_b: dict | None = None,
+                intel_a: dict | None = None, intel_b: dict | None = None,
+                ) -> dict:
+    """ML-предсказание боя A vs B с опциональными QoO/Intel.
+
+    Если модель обучалась на меньшем числе фич (старая версия) — режем
+    feature vector до feature_count из meta.
+
+    Returns:
        {
          'win_prob_a': 0.62, 'win_prob_b': 0.38,
          'method_probs': {'KO/TKO': 0.4, 'Submission': 0.15, 'Decision': 0.45},
@@ -350,8 +400,14 @@ def predict_ml(fa: dict, fb: dict) -> dict:
         if meta is None or _loaded["winner"] is None:
             return {"available": False, "reason": "no_trained_model"}
 
-    feats = build_features(fa, fb).reshape(1, -1)
-    feat_dict = {FEATURE_NAMES[i]: float(feats[0, i]) for i in range(len(FEATURE_NAMES))}
+    feats = build_features(fa, fb, qoo_a, qoo_b, intel_a, intel_b).reshape(1, -1)
+    # Backwards compat: если модель тренировалась на меньшем числе фич — обрезаем
+    expected = (_loaded.get("meta") or {}).get("feature_count")
+    if expected and feats.shape[1] != expected:
+        feats = feats[:, :expected]
+    n = feats.shape[1]
+    feat_dict = {FEATURE_NAMES[i]: float(feats[0, i])
+                  for i in range(min(n, len(FEATURE_NAMES)))}
 
     try:
         proba = _loaded["winner"].predict_proba(feats)[0]
