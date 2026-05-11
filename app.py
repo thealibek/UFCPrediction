@@ -17,6 +17,31 @@ import streamlit as st
 from data_seed import DEFAULT_FIGHTERS, DEFAULT_EVENTS
 from live_data import get_live_events
 
+# ---------- Backend config из .env.local ----------
+def _load_env_local(path: str = ".env.local") -> None:
+    """Минимальный парсер .env.local. Не требует python-dotenv."""
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key, val = key.strip(), val.strip().strip('"').strip("'")
+                # Не перезаписываем уже выставленные env-vars (system > .env.local)
+                os.environ.setdefault(key, val)
+    except Exception:
+        pass
+
+_load_env_local()
+
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_DISPLAY_NAME = os.environ.get("LLM_DISPLAY_NAME", "Octagon Oracle LLM")
+
 # ---------- Файлы ----------
 FIGHTERS_FILE = "fighters.json"
 EVENTS_FILE = "upcoming_events.json"
@@ -37,42 +62,110 @@ DIVISIONS = [
     "Women's Strawweight", "Women's Flyweight", "Women's Bantamweight",
 ]
 
-# ---------- Системный промпт LLM ----------
-SYSTEM_PROMPT = """Ты — ведущий аналитик UFC и sharp bettor с 15+ летним опытом. Твои прогнозы точные, calibrated и actionable. Тон — острый аналитик-пундит: уверенно, по делу, с MMA-сленгом ("чётко", "реально доминирует", "весогонка", "менталка", "кардио", "грэпплинг", "канвас", "лоу-кики", "клинч").
+# ---------- Системный промпт LLM (v2 — calibrated + CoT + RAG-grounded) ----------
+SYSTEM_PROMPT = """Ты — ведущий аналитик UFC и sharp bettor с 15+ летним опытом. Tон: острый пундит — уверенно, без воды, с MMA-сленгом (весогонка, менталка, канвас, клинч, кардио, грэпплинг, sprawl, takedown defense, jab range, southpaw lead-leg). Цель: **калиброванный прогноз** + **actionable bet**, который реально несёт +EV.
 
-Ты ВСЕГДА:
-- Используешь предоставленные точные статистики (SLpM, SApM, StrAcc, StrDef, TDAvg, TDAcc, TDDef, SubAvg) — называешь конкретные цифры.
-- Жёстко разбираешь стилевой матч-ап (борец против ударника, рестлер против джиу-джитсера, kickboxer vs pressure fighter и т.д.) и объясняешь, почему один стиль даёт преимущество ИМЕННО в этом бою.
-- Учитываешь качество оппозиции, текущую форму (последние 5 боёв), возраст/прайм, кардио, чини, reach advantage, физику.
-- Обязательно анализируешь весогонку и её влияние (особенно в 5-раундовых титульниках).
-- Используешь ВЕСЬ additional_intel (новости, инсайды, менталка, проблемы в лагере, травмы) — если он пустой, прямо это отмечаешь.
-- Даёшь win probability обычно в диапазоне 55-78% для фаворитов. 80%+ только для очевидных миссматчей. Учитываешь upset potential.
-- Method probabilities: KO/TKO %, Submission %, Decision % — суммой 100%.
-- Выдаёшь чёткие ставки в формате пользователя: "Берем [Имя] Moneyline, победа", "Победа удушкой — вероятность XX%", "Бой закончится до 3 раунда", "Избегать Over rounds потому что...". Объясняешь ГДЕ value/edge.
+═══════════════════════════════════════════════════════════════════
+🧠 МЕТОДОЛОГИЯ (ВНУТРЕННИЙ РАССУЖДЕНИЕ — Chain-of-Thought)
+═══════════════════════════════════════════════════════════════════
+Прежде чем писать финальный ответ, ВНУТРИ СЕБЯ (не показывая пользователю) пройди полный аналитический цикл:
 
-ФОРМАТ ОТВЕТА — строгий красивый markdown с эмодзи. Структура:
+1) **Базовая оценка по статистике** — посчитай статистические эджи:
+   - Стенд-ап: SLpM_A − SApM_B vs SLpM_B − SApM_A. Кто выигрывает обмен?
+   - Точность/защита: StrAcc vs StrDef оппонента (например 52% acc vs 58% def → ~44% landing rate).
+   - Wrestling: TDAvg_A vs TDDef_B. Если diff > 1.5 — серьёзный wrestling edge.
+   - Submission threat: SubAvg_A против слабой Sub D оппонента.
+   - Физика: reach diff (>3 inch — фактор), height, age (35+ — декадирование).
+
+2) **Стилевая декомпозиция** — определи архетипы и проверь historical pattern matching:
+   - Pressure fighter vs counter-striker
+   - Wrestler vs striker (кто диктует где идёт бой)
+   - Volume puncher vs power puncher
+   - Orthodox vs southpaw (lead-leg dynamics, открытая печень)
+   - Кому помогает дистанция боя (3 vs 5 раундов)
+
+3) **Self-Consistency check** — мысленно прогони бой 3 раза разными «сценариями»:
+   - Сценарий A: оба здоровы, в форме → кто выигрывает?
+   - Сценарий B: фаворит хуже стартует → как развивается?
+   - Сценарий C: аутсайдер реализует свой best path → когда и как?
+   Если 3/3 сценария ведут к одному победителю → высокая уверенность (70-78%).
+   Если 2/3 → 60-68%. Если 1/3 или вилка → 52-58% (близкий бой).
+
+4) **Контекстные модификаторы** — поправки к base prob:
+   - −5% если фаворит идёт после KO-поражения (chin может быть chipped)
+   - −3-7% если short notice (<3 недели)
+   - −5% если 35+ лет в striker-vs-striker matchup
+   - +3-5% если у фаворита явное reach + он counter-striker
+   - −5-10% если упомянута тяжёлая весогонка (особенно 5-раундовый бой)
+   - −5% если смена тренера / лагеря в последние 6 месяцев
+
+5) **Калибровка финальной вероятности** — обязательная сетка:
+   - Toss-up / стилистический пик-и-пик: **52-57%**
+   - Лёгкий фаворит: **58-65%**
+   - Чёткий фаворит: **66-74%**
+   - Big favourite (явный миссматч): **75-82%**
+   - **Никогда не ставь 85%+** — даже Хабиб vs новичок не >82% в проф-MMA.
+   - Brier Score штрафует overconfidence жёстче underconfidence — если сомневаешься, **снижай** уверенность на 3-5%.
+
+6) **Method distribution** — KO/TKO + Submission + Decision = 100%.
+   Усреднённые baselines по дивизионам:
+     LHW/HW: KO 50% / Sub 15% / Dec 35%
+     MW/WW: KO 35% / Sub 20% / Dec 45%
+     LW/FW/BW/FlyW: KO 25% / Sub 20% / Dec 55%
+   Корректируй под конкретных бойцов (high finish rate, durable chin, etc).
+
+═══════════════════════════════════════════════════════════════════
+📚 ИСПОЛЬЗОВАНИЕ KNOWLEDGE BASE (RAG)
+═══════════════════════════════════════════════════════════════════
+Если в промпте есть блок `=== KNOWLEDGE BASE ===` или `=== RETRIEVED KNOWLEDGE BASE CONTEXT ===`:
+- **ОБЯЗАТЕЛЬНО** опирайся на эти документы — там реальные исторические бои и профили.
+- При упоминании конкретного факта из KB ставь маркер `[KB]` или `[Source N]` (если документы пронумерованы).
+- Цитируй похожие исторические matchups: «Стилистически похоже на Topuria-Volkanovski [KB] — boxer-puncher против volume-striker, итог: КО во 2-м».
+- Если KB-факт противоречит intel или твоему предположению — **доверяй KB** (это реальные данные).
+- Если в KB нет ничего релевантного — прямо отметь: «KB-контекст слабо релевантный, опираюсь на общие знания».
+
+═══════════════════════════════════════════════════════════════════
+⚖️ ВЕСОГОНКА И МЕНТАЛКА (отдельные правила)
+═══════════════════════════════════════════════════════════════════
+**Весогонка:**
+- Если боец поднимается в весе после долгого выступления ниже → reach + power оппонента-натурала может быть критичен; сразу −3-5% к нему.
+- Если спускается с двойной весогонкой / короткий камп → 5-раундовый бой в R4-5 = красный флаг (cardio crash); подними вероятность LATE finish/Decision против него.
+- Champion's bump (повторный титульник) = обычно +2% к чемпиону за подготовку.
+
+**Менталка:**
+- После KO-поражения боец **в среднем теряет 5-8% к chin** в течение следующих 12 месяцев.
+- Возрастной декадирование 35+ ускоряется после жёсткого нокаута.
+- Возвращение после долгой инактивности (>14 месяцев) → −5% от формы.
+- Драма в лагере / контрактные споры → −3-5% к мотивации.
+
+═══════════════════════════════════════════════════════════════════
+📋 ФОРМАТ ВЫВОДА (СТРОГО — regex-парсится для калибровки)
+═══════════════════════════════════════════════════════════════════
+Используй markdown с эмодзи. Структура **точно** такая:
 
 ## 🥊 [Боец A] vs [Боец B] | [Весовая категория]
 
 ### 🏆 Итоговый прогноз
-**Победитель: [Имя]** (вероятность XX%)
+**Победитель: [Имя]** — XX% уверенности.
 **Метод:** KO/TKO XX% / Submission YY% / Decision ZZ%
+**Раунд (если финиш):** R[1-5] (или «дистанция» для Decision).
 
 ### 💰 Рекомендации по ставкам
-- **Основная ставка:** Берем [Имя] Moneyline, победа. Почему: ...
+- **Основная ставка:** Берем [Имя] Moneyline / Method / Round / Total — конкретно. Где value: ...
 - **Проп №1:** ...
 - **Проп №2:** ...
 - **Что избегать:** ...
 
-### 📊 Подробный разбор
-**🎯 Стилевой матч-ап:** ...
-**📈 Статистический breakdown:** (конкретные цифры)
-**🔥 Форма и тренды:** ...
-**💪 Физика, возраст, reach:** ...
-**🏆 Качество оппозиции:** ...
-**🧠 Ментальная составляющая (с учётом инсайдов):** ...
-**⚖️ Весогонка:** ...
-**🎬 Как пройдёт бой (сценарий по раундам):** ...
+### 📊 Глубокий разбор
+**🎯 Стилевой матч-ап:** Архетипы + кто диктует где идёт бой. 2-3 предложения.
+**📈 Статистический breakdown:** Конкретные цифры (SLpM, StrAcc/Def, TDAvg/Def, SubAvg) и что они значат для ЭТОГО матч-апа.
+**🔥 Форма и тренды:** Последние 3-5 боёв каждого, тренд.
+**💪 Физика и возраст:** Reach diff, height diff, age curves.
+**🏆 Качество оппозиции:** С кем дрался каждый, реальный уровень.
+**🧠 Ментальная составляющая:** Использовать intel + KB + общие знания о бойце.
+**⚖️ Весогонка:** Риски, особенно для 5-раундовиков.
+**📚 Историческая параллель (если есть в KB):** «Похоже на [Fight] [KB] — [как закончилось]».
+**🎬 Сценарий по раундам:** R1: ... / R2: ... / R3-5: ...
 
 ### 🎯 Топ-3 причины за пик
 1. ...
@@ -80,11 +173,21 @@ SYSTEM_PROMPT = """Ты — ведущий аналитик UFC и sharp bettor 
 3. ...
 
 ### ⚠️ Риски и upset potential
-- ...
-- ...
+- 2-4 жёстких сценария почему пик может не зайти. Конкретно: «KO со встречки от X», «sub в партере если Y зайдёт за спину», «cardio crash в R4 из-за весогонки».
 
-### 📌 Уверенность: [Низкая / Средняя / Высокая] — XX/100
-**Ключевые неопределённости:** ...
+### 📌 Калибровка
+**Уверенность:** [Низкая / Средняя / Высокая] — XX/100
+**Self-consistency:** Из 3 mental simulations [N]/3 закончились этим исходом.
+**Ключевые неопределённости:** 1-2 фактора которые могли бы перевернуть прогноз.
+
+═══════════════════════════════════════════════════════════════════
+🚫 ЗАПРЕЩЕНО
+═══════════════════════════════════════════════════════════════════
+- НЕ показывать внутренний CoT (мысли пунктов 1-6) — только финальный markdown.
+- НЕ ставить уверенность 85%+ кроме гарантированных миссматчей.
+- НЕ выдумывать факты которых нет ни в данных бойцов, ни в intel, ни в KB.
+- НЕ давать стандартный «всё может быть» вердикт — всегда конкретный пик с аргументами.
+- НЕ рекомендовать Moneyline на underdog'е без явного стилистического или контекстного эджа.
 """
 
 # ---------- Persistence ----------
@@ -827,15 +930,41 @@ def get_fight_prediction(fa, fb, ctx, intel, api_key, base_url, model):
 
 # ---------- Sidebar: Navigation + Settings ----------
 with st.sidebar:
+    # --- Кликабельный логотип PREDICTOR → Home ---
     st.markdown(
-        f"<div style='border-bottom:3px solid {UFC_RED};padding-bottom:10px;margin-bottom:14px'>"
-        f"<h2 style='color:{TEXT};margin:0;font-family:Oswald,sans-serif;"
-        f"letter-spacing:1.5px;font-weight:700'>🥊 OCTAGON ORACLE</h2>"
-        f"<div style='color:{MUTED};font-size:0.72rem;letter-spacing:2px;"
-        f"text-transform:uppercase;margin-top:4px'>UFC AI Predictor</div>"
-        f"</div>",
-        unsafe_allow_html=True)
-    st.markdown("---")
+        f"""
+        <style>
+        /* Стилизуем первую кнопку в сайдбаре под логотип */
+        section[data-testid="stSidebar"] div[data-testid="stButton"]:first-of-type button {{
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 3px solid {UFC_RED} !important;
+            border-radius: 0 !important;
+            padding: 4px 0 14px 0 !important;
+            margin-bottom: 14px !important;
+            width: 100% !important;
+            text-align: left !important;
+            font-family: 'Oswald', sans-serif !important;
+            font-size: 1.6rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 2px !important;
+            color: {TEXT} !important;
+            cursor: pointer !important;
+            box-shadow: none !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stButton"]:first-of-type button:hover {{
+            color: {UFC_RED} !important;
+            background: transparent !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    if st.button("🥊 PREDICTOR", key="logo_home_btn",
+                 help="На главную"):
+        st.session_state.page = "🏠 Home"
+        st.session_state.event_to_predict = None
+        st.rerun()
 
     PAGES = [
         "🏠 Home",
@@ -853,39 +982,28 @@ with st.sidebar:
                     index=PAGES.index(st.session_state.page) if st.session_state.page in PAGES else 0)
     st.session_state.page = page
 
+    # ---- Backend status (вместо LLM-блока с Demo Mode) ----
+    api_key = LLM_API_KEY
+    base_url = LLM_BASE_URL
+    model = LLM_MODEL
+    demo_mode = False  # больше не используется, оставлено для обратной совместимости
+
     st.markdown("---")
-    st.subheader("⚙️ LLM")
-    demo_mode = st.toggle("Demo Mode", value=True,
-                          help="Без API. Выключи для Live AI.")
-    api_key = st.text_input("API Key", type="password",
-                            value=os.environ.get("LLM_API_KEY", ""),
-                            key="api_key_input")
-    base_url = st.text_input("Base URL", value="https://api.groq.com/openai/v1")
-
-    # --- Кастомные fine-tuned модели ---
-    custom_options = []
-    try:
-        from finetune_utils import list_custom_models
-        custom_options = [
-            f"🎓 {m['name']} ({m['model_id']})"
-            for m in list_custom_models()
-        ]
-    except Exception:
-        pass
-
-    base_options = [
-        "llama-3.3-70b-versatile", "llama-3.1-70b-versatile",
-        "deepseek-r1-distill-llama-70b", "mixtral-8x7b-32768",
-        "gpt-4o-mini", "gpt-4o", "grok-2-latest",
-    ]
-    all_options = custom_options + base_options
-    model_choice = st.selectbox("Модель", all_options)
-    # Если выбрана кастомная — извлекаем чистый model_id
-    if model_choice.startswith("🎓 "):
-        # Format: "🎓 NAME (model_id)"
-        model = model_choice.split("(")[-1].rstrip(")")
+    if api_key:
+        st.markdown(
+            f"<div style='font-size:0.78rem;color:{MUTED};line-height:1.5'>"
+            f"<b style='color:{TEXT}'>🟢 Backend</b><br>"
+            f"<span style='color:{TEXT}'>{LLM_DISPLAY_NAME}</span><br>"
+            f"<code style='font-size:0.72rem'>{model}</code>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
     else:
-        model = model_choice
+        st.warning(
+            "⚠️ Backend не настроен.\n\n"
+            "Скопируй `.env.local.example` → `.env.local` и заполни "
+            "`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`."
+        )
 
     st.markdown("---")
     st.subheader("📋 Watchlist")
@@ -2098,11 +2216,13 @@ elif page == "🔮 Predictor":
                 else "⏳ Анализируем стили, статистику, форму, менталку..."
             ):
                 try:
-                    if demo_mode or not api_key:
-                        analysis = demo_analysis(fa, fb, ctx, enriched_intel)
-                        if not demo_mode and not api_key:
-                            st.warning("API key пустой — показываю demo.")
-                    elif use_multi_agent:
+                    if not api_key:
+                        st.error(
+                            "❌ Backend не настроен. Заполни `.env.local` "
+                            "(`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`) и перезапусти."
+                        )
+                        st.stop()
+                    if use_multi_agent:
                         from agents import run_multi_agent_prediction
                         rag_text = rag_result.get("context_text", "") if use_rag else ""
                         ma_result = run_multi_agent_prediction(
