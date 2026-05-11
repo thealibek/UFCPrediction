@@ -857,13 +857,34 @@ with st.sidebar:
     demo_mode = st.toggle("Demo Mode", value=True,
                           help="Без API. Выключи для Live AI.")
     api_key = st.text_input("API Key", type="password",
-                            value=os.environ.get("LLM_API_KEY", ""))
+                            value=os.environ.get("LLM_API_KEY", ""),
+                            key="api_key_input")
     base_url = st.text_input("Base URL", value="https://api.groq.com/openai/v1")
-    model = st.selectbox("Модель", [
+
+    # --- Кастомные fine-tuned модели ---
+    custom_options = []
+    try:
+        from finetune_utils import list_custom_models
+        custom_options = [
+            f"🎓 {m['name']} ({m['model_id']})"
+            for m in list_custom_models()
+        ]
+    except Exception:
+        pass
+
+    base_options = [
         "llama-3.3-70b-versatile", "llama-3.1-70b-versatile",
         "deepseek-r1-distill-llama-70b", "mixtral-8x7b-32768",
         "gpt-4o-mini", "gpt-4o", "grok-2-latest",
-    ])
+    ]
+    all_options = custom_options + base_options
+    model_choice = st.selectbox("Модель", all_options)
+    # Если выбрана кастомная — извлекаем чистый model_id
+    if model_choice.startswith("🎓 "):
+        # Format: "🎓 NAME (model_id)"
+        model = model_choice.split("(")[-1].rstrip(")")
+    else:
+        model = model_choice
 
     st.markdown("---")
     st.subheader("📋 Watchlist")
@@ -1964,6 +1985,42 @@ elif page == "🔮 Predictor":
              "Используется для расчёта Brier Score и калибровки.",
     )
 
+    # ---------- Multi-Agent Mode ----------
+    st.markdown("### 🤖 Multi-Agent Reasoning")
+    ma_c1, ma_c2 = st.columns([3, 1])
+    use_multi_agent = ma_c1.toggle(
+        "Использовать Multi-Agent режим (Stats + Style + Context → Synthesizer)",
+        value=False,
+        help="4 специализированных агента вместо одного промпта. "
+             "Глубже разбор, но дольше и дороже (~4 LLM-вызова).",
+    )
+    ma_parallel = ma_c2.checkbox("Parallel", value=True,
+        help="Stats/Style/Context запускаются параллельно.")
+
+    # Per-agent model override (опционально)
+    agent_models = {}
+    if use_multi_agent:
+        with st.expander("⚙️ Модели по агентам (опционально)"):
+            st.caption(
+                "По умолчанию все агенты используют модель из сайдбара. "
+                "Можно задать отдельную модель для каждого агента "
+                "(например, дешёвая для Stats, мощная для Synthesizer)."
+            )
+            am1, am2 = st.columns(2)
+            stats_m = am1.text_input("Stats Agent model", "",
+                placeholder=f"default: {model}")
+            style_m = am2.text_input("Style Agent model", "",
+                placeholder=f"default: {model}")
+            ctx_m = am1.text_input("Context Agent model", "",
+                placeholder=f"default: {model}")
+            synth_m = am2.text_input("Synthesizer model", "",
+                placeholder=f"default: {model}")
+            if stats_m: agent_models["stats"] = stats_m
+            if style_m: agent_models["style"] = style_m
+            if ctx_m: agent_models["context"] = ctx_m
+            if synth_m: agent_models["synthesizer"] = synth_m
+        agent_models["default"] = model
+
     st.markdown("---")
     if st.button("🔥 ЗАПУСТИТЬ ГЛУБОКИЙ АНАЛИЗ И ПРОГНОЗ", use_container_width=True):
         if not fa or not fb:
@@ -2009,12 +2066,30 @@ elif page == "🔮 Predictor":
                     f"=== END KB CONTEXT ===\n"
                 )
 
-            with st.spinner("⏳ Анализируем стили, статистику, форму, менталку..."):
+            agent_outputs = {}
+            agent_timings = {}
+            with st.spinner(
+                "🤖 Multi-agent reasoning..." if use_multi_agent
+                else "⏳ Анализируем стили, статистику, форму, менталку..."
+            ):
                 try:
                     if demo_mode or not api_key:
                         analysis = demo_analysis(fa, fb, ctx, enriched_intel)
                         if not demo_mode and not api_key:
                             st.warning("API key пустой — показываю demo.")
+                    elif use_multi_agent:
+                        from agents import run_multi_agent_prediction
+                        rag_text = rag_result.get("context_text", "") if use_rag else ""
+                        ma_result = run_multi_agent_prediction(
+                            fa=fa, fb=fb, ctx=ctx, intel=intel,
+                            rag_context=rag_text,
+                            api_key=api_key, base_url=base_url,
+                            models=agent_models,
+                            parallel=ma_parallel,
+                        )
+                        analysis = ma_result.final
+                        agent_outputs = ma_result.agent_outputs
+                        agent_timings = ma_result.timings
                     else:
                         analysis = get_fight_prediction(fa, fb, ctx, enriched_intel,
                                                        api_key, base_url, model)
@@ -2038,6 +2113,9 @@ elif page == "🔮 Predictor":
                         "rag_used": use_rag,
                         "tracked": track_for_calibration,
                         "model": model,
+                        "multi_agent_used": use_multi_agent,
+                        "agent_outputs": agent_outputs,
+                        "agent_timings": agent_timings,
                         "status": "pending",
                     }
                     st.session_state.last_analysis = record
@@ -2100,6 +2178,26 @@ elif page == "🔮 Predictor":
         st.markdown("---")
         st.markdown("## 🎯 Прогноз ИИ")
 
+        # Multi-Agent transparency: вывод каждого агента
+        if la.get("multi_agent_used") and la.get("agent_outputs"):
+            st.markdown(
+                "🤖 **Multi-Agent Mode** — финальный прогноз построен синтезом "
+                "выводов специализированных агентов. Развернуть каждого:"
+            )
+            agent_icons = {
+                "Stats Agent": "🔢",
+                "Style Agent": "🥊",
+                "Context Agent": "🧠",
+            }
+            for agent_name, output in la["agent_outputs"].items():
+                icon = agent_icons.get(agent_name, "🤖")
+                t = la.get("agent_timings", {}).get(agent_name)
+                t_str = f" · {t:.1f}s" if t else ""
+                with st.expander(f"{icon} {agent_name}{t_str}"):
+                    st.markdown(output)
+            st.markdown("---")
+            st.markdown("### 🎯 Synthesizer — финальный прогноз")
+
         # RAG transparency: что именно ИИ использовал из базы
         if la.get("rag_used") and la.get("rag_raw"):
             with st.expander(
@@ -2151,6 +2249,18 @@ elif page == "🧠 Knowledge Base":
         )
     except Exception as e:
         st.error(f"❌ Ошибка Knowledge Base: {e}")
+        st.exception(e)
+
+
+# =================================================================
+# PAGE: FINE-TUNING
+# =================================================================
+elif page == "🎓 Fine-Tuning":
+    try:
+        from finetune_ui import render_finetune_page
+        render_finetune_page()
+    except Exception as e:
+        st.error(f"❌ Ошибка Fine-Tuning: {e}")
         st.exception(e)
 
 
