@@ -1,0 +1,1175 @@
+[
+  {
+    "name": "Khamzat Chimaev",
+    "nickname": "Borz",
+    "country": "Швеция/Чечня",
+    "division": "Middleweight",
+    "age": 31,
+    "height_cm": 188,
+    "reach_cm": 191,
+    "stance": "Orthodox",
+    "record": "14-0-0",
+    "wins": 14,
+    "losses": 0,
+    "draws": 0,
+    "SLpM": 4.85,
+    "SApM": 1.45,
+    "StrAcc": 62,
+    "StrDef": 60,
+    "TDAvg": 3.4,
+    "TDAcc": 50,
+    "TDDef": 75,
+    "SubAvg": 1.7,
+    "style": "Доминирующий wrestler-боксёр, душит на канвасе, дикий top pressure",
+    "strengths": [
+      "Контроль на земле",
+      "Топ-прессинг",
+      "Сабмишены",
+      "Кардио улучшилось"
+    ],
+    "weaknesses": [
+      "Кардио во 2-3 раунде ранее",
+      "Защита от джеба ударников"
+    ],
+    "weight_cut_difficulty": "Высокая (поднялся в 185 после драмы на 170)",
+    "recent_fights": [
+      {
+        "opponent": "Robert Whittaker",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2024-10"
+      },
+      {
+        "opponent": "Kamaru Usman",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-10"
+      },
+      {
+        "opponent": "Kevin Holland",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2022-09"
+      },
+      {
+        "opponent": "Gilbert Burns",
+        "result": "W",
+        "method": "Decision",
+        "date": "2022-04"
+      },
+      {
+        "opponent": "Li Jingliang",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2021-10"
+      }
+    ]
+  },
+  {
+    "name": "Sean Strickland",
+    "nickname": "Tarzan",
+    "country": "США",
+    "division": "Middleweight",
+    "age": 35,
+    "height_cm": 185,
+    "reach_cm": 193,
+    "stance": "Southpaw/Switch",
+    "record": "29-6-0",
+    "wins": 29,
+    "losses": 6,
+    "draws": 0,
+    "SLpM": 5.35,
+    "SApM": 3.95,
+    "StrAcc": 41,
+    "StrDef": 61,
+    "TDAvg": 0.3,
+    "TDAcc": 33,
+    "TDDef": 70,
+    "SubAvg": 0.2,
+    "style": "Philly shell, объёмный джеб, прессингующий boxer-striker",
+    "strengths": [
+      "Чугунный подбородок",
+      "Кардио на 5 раундов",
+      "Защита и работа джебом"
+    ],
+    "weaknesses": [
+      "Низкий вынос урона за удар",
+      "Уязвим к борьбе элиты"
+    ],
+    "weight_cut_difficulty": "Низкая",
+    "recent_fights": [
+      {
+        "opponent": "Paulo Costa",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-06"
+      },
+      {
+        "opponent": "Dricus du Plessis",
+        "result": "L",
+        "method": "Decision",
+        "date": "2024-01"
+      },
+      {
+        "opponent": "Israel Adesanya",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-09"
+      },
+      {
+        "opponent": "Abus Magomedov",
+        "result": "W",
+        "method": "TKO R2",
+        "date": "2023-07"
+      },
+      {
+        "opponent": "Nassourdine Imavov",
+        "result": "L",
+        "method": "Decision",
+        "date": "2023-01"
+      }
+    ]
+  },
+  {
+    "name": "Islam Makhachev",
+    "nickname": "—",
+    "country": "Россия (Дагестан)",
+    "division": "Lightweight",
+    "age": 34,
+    "height_cm": 178,
+    "reach_cm": 178,
+    "stance": "Southpaw",
+    "record": "26-1-0",
+    "wins": 26,
+    "losses": 1,
+    "draws": 0,
+    "SLpM": 3.05,
+    "SApM": 1.65,
+    "StrAcc": 56,
+    "StrDef": 64,
+    "TDAvg": 3.05,
+    "TDAcc": 65,
+    "TDDef": 84,
+    "SubAvg": 1.1,
+    "style": "Sambo-wrestler, давление, контроль, удушения",
+    "strengths": [
+      "Лучший grappling в дивизионе",
+      "IQ боя",
+      "Топ-контроль"
+    ],
+    "weaknesses": [
+      "Возраст подкрадывается",
+      "Размер против WW"
+    ],
+    "weight_cut_difficulty": "Средняя/высокая",
+    "recent_fights": [
+      {
+        "opponent": "Dustin Poirier",
+        "result": "W",
+        "method": "Sub R5",
+        "date": "2024-06"
+      },
+      {
+        "opponent": "Alexander Volkanovski",
+        "result": "W",
+        "method": "KO R1",
+        "date": "2023-10"
+      },
+      {
+        "opponent": "Alexander Volkanovski",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-02"
+      },
+      {
+        "opponent": "Charles Oliveira",
+        "result": "W",
+        "method": "Sub R2",
+        "date": "2022-10"
+      },
+      {
+        "opponent": "Bobby Green",
+        "result": "W",
+        "method": "TKO R1",
+        "date": "2022-02"
+      }
+    ]
+  },
+  {
+    "name": "Ilia Topuria",
+    "nickname": "El Matador",
+    "country": "Испания/Грузия",
+    "division": "Lightweight",
+    "age": 29,
+    "height_cm": 170,
+    "reach_cm": 175,
+    "stance": "Orthodox",
+    "record": "16-0-0",
+    "wins": 16,
+    "losses": 0,
+    "draws": 0,
+    "SLpM": 5.95,
+    "SApM": 2.15,
+    "StrAcc": 56,
+    "StrDef": 63,
+    "TDAvg": 1.6,
+    "TDAcc": 45,
+    "TDDef": 80,
+    "SubAvg": 1.0,
+    "style": "Boxer-grappler, тяжёлые руки, BJJ чёрный пояс",
+    "strengths": [
+      "Чудовищная мощь рук",
+      "Тайминг",
+      "Грэпплинг как бэкап"
+    ],
+    "weaknesses": [
+      "Размер на 155",
+      "Кардио в чемпионских раундах не проверен"
+    ],
+    "weight_cut_difficulty": "Низкая после переезда в 155",
+    "recent_fights": [
+      {
+        "opponent": "Max Holloway",
+        "result": "W",
+        "method": "KO R3",
+        "date": "2024-10"
+      },
+      {
+        "opponent": "Alexander Volkanovski",
+        "result": "W",
+        "method": "KO R2",
+        "date": "2024-02"
+      },
+      {
+        "opponent": "Josh Emmett",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-06"
+      },
+      {
+        "opponent": "Bryce Mitchell",
+        "result": "W",
+        "method": "Sub R2",
+        "date": "2022-12"
+      },
+      {
+        "opponent": "Jai Herbert",
+        "result": "W",
+        "method": "KO R2",
+        "date": "2022-03"
+      }
+    ]
+  },
+  {
+    "name": "Alex Pereira",
+    "nickname": "Poatan",
+    "country": "Бразилия",
+    "division": "Light Heavyweight",
+    "age": 38,
+    "height_cm": 193,
+    "reach_cm": 201,
+    "stance": "Orthodox",
+    "record": "12-2-0",
+    "wins": 12,
+    "losses": 2,
+    "draws": 0,
+    "SLpM": 6.15,
+    "SApM": 4.3,
+    "StrAcc": 56,
+    "StrDef": 56,
+    "TDAvg": 0.0,
+    "TDAcc": 0,
+    "TDDef": 64,
+    "SubAvg": 0.0,
+    "style": "Чистый кикбоксер-убийца, лоу-кики и левый хук",
+    "strengths": [
+      "Один из топ-нокаутёров истории",
+      "Левый хук",
+      "Калечащие лоу-кики"
+    ],
+    "weaknesses": [
+      "Защита от тейкдаунов средняя",
+      "Возраст 38"
+    ],
+    "weight_cut_difficulty": "Низкая",
+    "recent_fights": [
+      {
+        "opponent": "Magomed Ankalaev",
+        "result": "L",
+        "method": "Decision",
+        "date": "2025-03"
+      },
+      {
+        "opponent": "Khalil Rountree",
+        "result": "W",
+        "method": "TKO R4",
+        "date": "2024-10"
+      },
+      {
+        "opponent": "Jiri Prochazka",
+        "result": "W",
+        "method": "KO R2",
+        "date": "2024-06"
+      },
+      {
+        "opponent": "Jamahal Hill",
+        "result": "W",
+        "method": "KO R1",
+        "date": "2024-04"
+      },
+      {
+        "opponent": "Jiri Prochazka",
+        "result": "W",
+        "method": "TKO R2",
+        "date": "2023-11"
+      }
+    ]
+  },
+  {
+    "name": "Merab Dvalishvili",
+    "nickname": "The Machine",
+    "country": "Грузия",
+    "division": "Bantamweight",
+    "age": 35,
+    "height_cm": 170,
+    "reach_cm": 173,
+    "stance": "Orthodox",
+    "record": "19-4-0",
+    "wins": 19,
+    "losses": 4,
+    "draws": 0,
+    "SLpM": 4.35,
+    "SApM": 3.1,
+    "StrAcc": 41,
+    "StrDef": 55,
+    "TDAvg": 5.85,
+    "TDAcc": 38,
+    "TDDef": 70,
+    "SubAvg": 0.4,
+    "style": "Безумный pace-wrestler, тейкдауны без остановки",
+    "strengths": [
+      "Кардио вне планеты",
+      "Объём тейкдаунов",
+      "Прессинг 25 минут"
+    ],
+    "weaknesses": [
+      "Точность ударов средняя",
+      "Не нокаутёр"
+    ],
+    "weight_cut_difficulty": "Низкая",
+    "recent_fights": [
+      {
+        "opponent": "Umar Nurmagomedov",
+        "result": "W",
+        "method": "Decision",
+        "date": "2025-01"
+      },
+      {
+        "opponent": "Sean O'Malley",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-09"
+      },
+      {
+        "opponent": "Henry Cejudo",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-02"
+      },
+      {
+        "opponent": "Petr Yan",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-03"
+      },
+      {
+        "opponent": "Jose Aldo",
+        "result": "W",
+        "method": "Decision",
+        "date": "2022-08"
+      }
+    ]
+  },
+  {
+    "name": "Jack Della Maddalena",
+    "nickname": "JDM",
+    "country": "Австралия",
+    "division": "Welterweight",
+    "age": 29,
+    "height_cm": 180,
+    "reach_cm": 188,
+    "stance": "Orthodox",
+    "record": "18-2-0",
+    "wins": 18,
+    "losses": 2,
+    "draws": 0,
+    "SLpM": 6.5,
+    "SApM": 4.2,
+    "StrAcc": 53,
+    "StrDef": 56,
+    "TDAvg": 0.2,
+    "TDAcc": 50,
+    "TDDef": 64,
+    "SubAvg": 0.3,
+    "style": "Скользкий boxer с короткими комбо в клинче",
+    "strengths": [
+      "Боксёрские руки",
+      "Работа в клинче",
+      "Подбородок"
+    ],
+    "weaknesses": [
+      "Защита тейкдаунов под вопросом против элиты",
+      "Кардио в 5 раундах"
+    ],
+    "weight_cut_difficulty": "Средняя",
+    "recent_fights": [
+      {
+        "opponent": "Belal Muhammad",
+        "result": "W",
+        "method": "Decision",
+        "date": "2025-05"
+      },
+      {
+        "opponent": "Gilbert Burns",
+        "result": "W",
+        "method": "TKO R3",
+        "date": "2024-06"
+      },
+      {
+        "opponent": "Kevin Holland",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-03"
+      },
+      {
+        "opponent": "Bassil Hafez",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-12"
+      },
+      {
+        "opponent": "Kenan Song",
+        "result": "W",
+        "method": "TKO R1",
+        "date": "2023-07"
+      }
+    ]
+  },
+  {
+    "name": "Shavkat Rakhmonov",
+    "nickname": "Nomad",
+    "country": "Казахстан",
+    "division": "Welterweight",
+    "age": 31,
+    "height_cm": 185,
+    "reach_cm": 193,
+    "stance": "Orthodox",
+    "record": "18-1-0",
+    "wins": 18,
+    "losses": 1,
+    "draws": 0,
+    "SLpM": 4.55,
+    "SApM": 2.1,
+    "StrAcc": 53,
+    "StrDef": 60,
+    "TDAvg": 2.85,
+    "TDAcc": 52,
+    "TDDef": 75,
+    "SubAvg": 1.6,
+    "style": "Финишер-универсал, борьба + удары + сабмишены",
+    "strengths": [
+      "Финишёр на 100% побед до недавнего",
+      "Универсал",
+      "Cabezudo BJJ"
+    ],
+    "weaknesses": [
+      "Опыт против самой топ-элиты только пришёл",
+      "Возраст 31"
+    ],
+    "weight_cut_difficulty": "Высокая",
+    "recent_fights": [
+      {
+        "opponent": "Jack Della Maddalena",
+        "result": "L",
+        "method": "Decision",
+        "date": "2025-08"
+      },
+      {
+        "opponent": "Ian Machado Garry",
+        "result": "W",
+        "method": "Sub R4",
+        "date": "2024-12"
+      },
+      {
+        "opponent": "Stephen Thompson",
+        "result": "W",
+        "method": "Sub R4",
+        "date": "2023-12"
+      },
+      {
+        "opponent": "Geoff Neal",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2023-04"
+      },
+      {
+        "opponent": "Neil Magny",
+        "result": "W",
+        "method": "Sub R2",
+        "date": "2022-06"
+      }
+    ]
+  },
+  {
+    "name": "Belal Muhammad",
+    "nickname": "Remember the Name",
+    "country": "США",
+    "division": "Welterweight",
+    "age": 37,
+    "height_cm": 178,
+    "reach_cm": 183,
+    "stance": "Orthodox",
+    "record": "24-4-0",
+    "wins": 24,
+    "losses": 4,
+    "draws": 0,
+    "SLpM": 4.1,
+    "SApM": 3.1,
+    "StrAcc": 47,
+    "StrDef": 56,
+    "TDAvg": 2.05,
+    "TDAcc": 36,
+    "TDDef": 72,
+    "SubAvg": 0.4,
+    "style": "Прессинг + грэпплинг, объём, кардио",
+    "strengths": [
+      "Кардио",
+      "Объём ударов",
+      "Грэпплинг бэкап"
+    ],
+    "weaknesses": [
+      "Не нокаутёр",
+      "Возраст"
+    ],
+    "weight_cut_difficulty": "Средняя",
+    "recent_fights": [
+      {
+        "opponent": "Jack Della Maddalena",
+        "result": "L",
+        "method": "Decision",
+        "date": "2025-05"
+      },
+      {
+        "opponent": "Leon Edwards",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-07"
+      },
+      {
+        "opponent": "Gilbert Burns",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-05"
+      },
+      {
+        "opponent": "Sean Brady",
+        "result": "W",
+        "method": "TKO R2",
+        "date": "2022-10"
+      },
+      {
+        "opponent": "Vicente Luque",
+        "result": "W",
+        "method": "Decision",
+        "date": "2022-04"
+      }
+    ]
+  },
+  {
+    "name": "Dustin Poirier",
+    "nickname": "The Diamond",
+    "country": "США",
+    "division": "Lightweight",
+    "age": 37,
+    "height_cm": 175,
+    "reach_cm": 183,
+    "stance": "Southpaw",
+    "record": "30-10-0",
+    "wins": 30,
+    "losses": 10,
+    "draws": 0,
+    "SLpM": 5.55,
+    "SApM": 4.55,
+    "StrAcc": 50,
+    "StrDef": 55,
+    "TDAvg": 1.4,
+    "TDAcc": 35,
+    "TDDef": 64,
+    "SubAvg": 1.5,
+    "style": "Boxer-puncher с BJJ, левая прямая и колени в клинче",
+    "strengths": [
+      "Опыт",
+      "Левая рука",
+      "Клинч и колени"
+    ],
+    "weaknesses": [
+      "Кардио падает",
+      "Защита от элитных wrestler-ов",
+      "Возраст"
+    ],
+    "weight_cut_difficulty": "Высокая",
+    "recent_fights": [
+      {
+        "opponent": "Islam Makhachev",
+        "result": "L",
+        "method": "Sub R5",
+        "date": "2024-06"
+      },
+      {
+        "opponent": "Benoit Saint Denis",
+        "result": "W",
+        "method": "KO R2",
+        "date": "2024-03"
+      },
+      {
+        "opponent": "Justin Gaethje",
+        "result": "L",
+        "method": "KO R2",
+        "date": "2023-07"
+      },
+      {
+        "opponent": "Michael Chandler",
+        "result": "W",
+        "method": "Sub R3",
+        "date": "2022-11"
+      },
+      {
+        "opponent": "Charles Oliveira",
+        "result": "L",
+        "method": "Sub R3",
+        "date": "2021-12"
+      }
+    ]
+  },
+  {
+    "name": "Charles Oliveira",
+    "nickname": "Do Bronx",
+    "country": "Бразилия",
+    "division": "Lightweight",
+    "age": 36,
+    "height_cm": 178,
+    "reach_cm": 188,
+    "stance": "Orthodox",
+    "record": "35-10-0",
+    "wins": 35,
+    "losses": 10,
+    "draws": 0,
+    "SLpM": 3.55,
+    "SApM": 3.1,
+    "StrAcc": 51,
+    "StrDef": 55,
+    "TDAvg": 2.45,
+    "TDAcc": 41,
+    "TDDef": 51,
+    "SubAvg": 3.1,
+    "style": "BJJ-маг с улучшенной ударкой и финишами",
+    "strengths": [
+      "Рекорд по сабмишенам в UFC",
+      "Финишёр",
+      "Локти и колени"
+    ],
+    "weaknesses": [
+      "Стеклянный подбородок против сильных рук",
+      "Защита TD низкая"
+    ],
+    "weight_cut_difficulty": "Высокая",
+    "recent_fights": [
+      {
+        "opponent": "Michael Chandler",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2024-11"
+      },
+      {
+        "opponent": "Arman Tsarukyan",
+        "result": "L",
+        "method": "Decision",
+        "date": "2024-04"
+      },
+      {
+        "opponent": "Beneil Dariush",
+        "result": "W",
+        "method": "TKO R1",
+        "date": "2023-06"
+      },
+      {
+        "opponent": "Islam Makhachev",
+        "result": "L",
+        "method": "Sub R2",
+        "date": "2022-10"
+      },
+      {
+        "opponent": "Justin Gaethje",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2022-05"
+      }
+    ]
+  },
+  {
+    "name": "Petr Yan",
+    "nickname": "No Mercy",
+    "country": "Россия",
+    "division": "Bantamweight",
+    "age": 32,
+    "height_cm": 170,
+    "reach_cm": 175,
+    "stance": "Switch",
+    "record": "18-5-0",
+    "wins": 18,
+    "losses": 5,
+    "draws": 0,
+    "SLpM": 5.05,
+    "SApM": 3.5,
+    "StrAcc": 50,
+    "StrDef": 60,
+    "TDAvg": 1.35,
+    "TDAcc": 38,
+    "TDDef": 75,
+    "SubAvg": 0.3,
+    "style": "Технический boxer-striker, дико чистая работа",
+    "strengths": [
+      "Техника бокса",
+      "Body work",
+      "Тайминг"
+    ],
+    "weaknesses": [
+      "Темп против wrestler-ов с объёмом TD"
+    ],
+    "weight_cut_difficulty": "Средняя",
+    "recent_fights": [
+      {
+        "opponent": "Deiveson Figueiredo",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-11"
+      },
+      {
+        "opponent": "Song Yadong",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-03"
+      },
+      {
+        "opponent": "Merab Dvalishvili",
+        "result": "L",
+        "method": "Decision",
+        "date": "2023-03"
+      },
+      {
+        "opponent": "Sean O'Malley",
+        "result": "L",
+        "method": "Decision",
+        "date": "2022-10"
+      },
+      {
+        "opponent": "Aljamain Sterling",
+        "result": "L",
+        "method": "Decision",
+        "date": "2022-04"
+      }
+    ]
+  },
+  {
+    "name": "Tom Aspinall",
+    "nickname": "—",
+    "country": "Англия",
+    "division": "Heavyweight",
+    "age": 32,
+    "height_cm": 196,
+    "reach_cm": 198,
+    "stance": "Orthodox",
+    "record": "15-3-0",
+    "wins": 15,
+    "losses": 3,
+    "draws": 0,
+    "SLpM": 6.95,
+    "SApM": 2.45,
+    "StrAcc": 65,
+    "StrDef": 55,
+    "TDAvg": 1.55,
+    "TDAcc": 50,
+    "TDDef": 75,
+    "SubAvg": 1.7,
+    "style": "Самый быстрый и техничный тяж в истории",
+    "strengths": [
+      "Скорость рук",
+      "BJJ",
+      "Быстрые финиши"
+    ],
+    "weaknesses": [
+      "Травма колена в анамнезе",
+      "Чемпионских раундов не было"
+    ],
+    "weight_cut_difficulty": "Нулевая",
+    "recent_fights": [
+      {
+        "opponent": "Curtis Blaydes",
+        "result": "W",
+        "method": "KO R1",
+        "date": "2024-07"
+      },
+      {
+        "opponent": "Sergei Pavlovich",
+        "result": "W",
+        "method": "KO R1",
+        "date": "2023-11"
+      },
+      {
+        "opponent": "Marcin Tybura",
+        "result": "W",
+        "method": "TKO R1",
+        "date": "2023-07"
+      },
+      {
+        "opponent": "Curtis Blaydes",
+        "result": "L",
+        "method": "TKO R1 (травма)",
+        "date": "2022-07"
+      },
+      {
+        "opponent": "Alexander Volkov",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2022-03"
+      }
+    ]
+  },
+  {
+    "name": "Magomed Ankalaev",
+    "nickname": "—",
+    "country": "Россия (Дагестан)",
+    "division": "Light Heavyweight",
+    "age": 33,
+    "height_cm": 191,
+    "reach_cm": 193,
+    "stance": "Orthodox",
+    "record": "21-1-1",
+    "wins": 21,
+    "losses": 1,
+    "draws": 1,
+    "SLpM": 3.55,
+    "SApM": 2.4,
+    "StrAcc": 54,
+    "StrDef": 58,
+    "TDAvg": 1.55,
+    "TDAcc": 50,
+    "TDDef": 70,
+    "SubAvg": 0.6,
+    "style": "Sambo + калькуляторная ударка, экономичный",
+    "strengths": [
+      "Защита",
+      "Лоу-кики",
+      "Универсал"
+    ],
+    "weaknesses": [
+      "Низкий output",
+      "Не любитель риска"
+    ],
+    "weight_cut_difficulty": "Средняя",
+    "recent_fights": [
+      {
+        "opponent": "Alex Pereira",
+        "result": "W",
+        "method": "Decision",
+        "date": "2025-03"
+      },
+      {
+        "opponent": "Aleksandar Rakic",
+        "result": "W",
+        "method": "TKO R2",
+        "date": "2024-10"
+      },
+      {
+        "opponent": "Johnny Walker",
+        "result": "W",
+        "method": "TKO R1",
+        "date": "2024-01"
+      },
+      {
+        "opponent": "Jan Blachowicz",
+        "result": "D",
+        "method": "Draw",
+        "date": "2022-12"
+      },
+      {
+        "opponent": "Anthony Smith",
+        "result": "W",
+        "method": "Sub R2",
+        "date": "2022-07"
+      }
+    ]
+  },
+  {
+    "name": "Arman Tsarukyan",
+    "nickname": "Ahalkalakets",
+    "country": "Армения",
+    "division": "Lightweight",
+    "age": 29,
+    "height_cm": 170,
+    "reach_cm": 178,
+    "stance": "Orthodox",
+    "record": "22-3-0",
+    "wins": 22,
+    "losses": 3,
+    "draws": 0,
+    "SLpM": 4.95,
+    "SApM": 3.3,
+    "StrAcc": 53,
+    "StrDef": 58,
+    "TDAvg": 3.6,
+    "TDAcc": 48,
+    "TDDef": 68,
+    "SubAvg": 0.7,
+    "style": "Wrestler-boxer, взрывной, агрессивный",
+    "strengths": [
+      "Атлетизм",
+      "TD + ground&pound",
+      "Прессинг"
+    ],
+    "weaknesses": [
+      "Кардио в 5 раундах",
+      "Эмоциональность"
+    ],
+    "weight_cut_difficulty": "Высокая",
+    "recent_fights": [
+      {
+        "opponent": "Charles Oliveira",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-04"
+      },
+      {
+        "opponent": "Beneil Dariush",
+        "result": "W",
+        "method": "KO R1",
+        "date": "2023-12"
+      },
+      {
+        "opponent": "Joaquim Silva",
+        "result": "W",
+        "method": "KO R1",
+        "date": "2023-03"
+      },
+      {
+        "opponent": "Damir Ismagulov",
+        "result": "W",
+        "method": "Decision",
+        "date": "2022-10"
+      },
+      {
+        "opponent": "Mateusz Gamrot",
+        "result": "L",
+        "method": "Decision",
+        "date": "2022-06"
+      }
+    ]
+  },
+  {
+    "name": "Jon Jones",
+    "nickname": "Bones",
+    "country": "США",
+    "division": "Heavyweight",
+    "age": 38,
+    "height_cm": 193,
+    "reach_cm": 215,
+    "stance": "Orthodox",
+    "record": "28-1-0",
+    "wins": 28,
+    "losses": 1,
+    "draws": 0,
+    "SLpM": 4.3,
+    "SApM": 2.1,
+    "StrAcc": 58,
+    "StrDef": 64,
+    "TDAvg": 1.85,
+    "TDAcc": 44,
+    "TDDef": 95,
+    "SubAvg": 0.5,
+    "style": "GOAT-универсал, oblique kicks, неортодоксальная ударка + грэпплинг",
+    "strengths": [
+      "Reach 215 см",
+      "Fight IQ",
+      "Универсал",
+      "Защита TD"
+    ],
+    "weaknesses": [
+      "Возраст",
+      "Неактивность",
+      "Рестлеры с дикой кардио"
+    ],
+    "weight_cut_difficulty": "Низкая",
+    "recent_fights": [
+      {
+        "opponent": "Stipe Miocic",
+        "result": "W",
+        "method": "TKO R3",
+        "date": "2024-11"
+      },
+      {
+        "opponent": "Ciryl Gane",
+        "result": "W",
+        "method": "Sub R1",
+        "date": "2023-03"
+      },
+      {
+        "opponent": "Dominick Reyes",
+        "result": "W",
+        "method": "Decision",
+        "date": "2020-02"
+      },
+      {
+        "opponent": "Thiago Santos",
+        "result": "W",
+        "method": "Decision",
+        "date": "2019-07"
+      },
+      {
+        "opponent": "Anthony Smith",
+        "result": "W",
+        "method": "Decision",
+        "date": "2019-03"
+      }
+    ]
+  },
+  {
+    "name": "Alexander Volkov",
+    "nickname": "Drago",
+    "country": "Россия",
+    "division": "Heavyweight",
+    "age": 37,
+    "height_cm": 203,
+    "reach_cm": 200,
+    "stance": "Orthodox",
+    "record": "39-11-0",
+    "wins": 39,
+    "losses": 11,
+    "draws": 0,
+    "SLpM": 4.55,
+    "SApM": 3.1,
+    "StrAcc": 56,
+    "StrDef": 58,
+    "TDAvg": 0.1,
+    "TDAcc": 25,
+    "TDDef": 65,
+    "SubAvg": 0.3,
+    "style": "Длинный kickboxer, джеб + лоу-кики, дистанция",
+    "strengths": [
+      "Длина",
+      "Джеб",
+      "Кардио для тяжа"
+    ],
+    "weaknesses": [
+      "Грэпплинг защита",
+      "Скорость рук против элиты"
+    ],
+    "weight_cut_difficulty": "Нулевая",
+    "recent_fights": [
+      {
+        "opponent": "Sergei Pavlovich",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-06"
+      },
+      {
+        "opponent": "Tai Tuivasa",
+        "result": "W",
+        "method": "Sub R2",
+        "date": "2023-09"
+      },
+      {
+        "opponent": "Alexandr Romanov",
+        "result": "W",
+        "method": "Decision",
+        "date": "2023-03"
+      },
+      {
+        "opponent": "Jairzinho Rozenstruik",
+        "result": "W",
+        "method": "Decision",
+        "date": "2022-06"
+      },
+      {
+        "opponent": "Tom Aspinall",
+        "result": "L",
+        "method": "Sub R1",
+        "date": "2022-03"
+      }
+    ]
+  },
+  {
+    "name": "Dricus du Plessis",
+    "nickname": "Stillknocks",
+    "country": "ЮАР",
+    "division": "Middleweight",
+    "age": 31,
+    "height_cm": 188,
+    "reach_cm": 193,
+    "stance": "Switch",
+    "record": "23-2-0",
+    "wins": 23,
+    "losses": 2,
+    "draws": 0,
+    "SLpM": 4.4,
+    "SApM": 3.85,
+    "StrAcc": 47,
+    "StrDef": 52,
+    "TDAvg": 2.2,
+    "TDAcc": 38,
+    "TDDef": 70,
+    "SubAvg": 0.9,
+    "style": "Уродливо-эффективный, прессинг, нестандартные углы",
+    "strengths": [
+      "Кардио",
+      "Дикий прессинг",
+      "Финишер"
+    ],
+    "weaknesses": [
+      "Техничность ударки спорна",
+      "Защита иногда дырявая"
+    ],
+    "weight_cut_difficulty": "Высокая",
+    "recent_fights": [
+      {
+        "opponent": "Sean Strickland",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-08"
+      },
+      {
+        "opponent": "Israel Adesanya",
+        "result": "W",
+        "method": "Sub R4",
+        "date": "2024-08"
+      },
+      {
+        "opponent": "Sean Strickland",
+        "result": "W",
+        "method": "Decision",
+        "date": "2024-01"
+      },
+      {
+        "opponent": "Robert Whittaker",
+        "result": "W",
+        "method": "TKO R2",
+        "date": "2023-07"
+      },
+      {
+        "opponent": "Derek Brunson",
+        "result": "W",
+        "method": "TKO R2",
+        "date": "2023-03"
+      }
+    ]
+  }
+]

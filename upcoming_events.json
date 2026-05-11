@@ -1,0 +1,202 @@
+[
+  {
+    "title": "UFC 325: DDP vs Whittaker",
+    "date": "2026-03-14",
+    "location": "Etihad Arena, Abu Dhabi",
+    "main_event": "Dricus du Plessis vs Robert Whittaker",
+    "title_fight": true,
+    "division": "Middleweight Title",
+    "status": "past",
+    "fights": [
+      {
+        "a": "Dricus du Plessis",
+        "b": "Robert Whittaker",
+        "winner": "Dricus du Plessis",
+        "method": "Decision"
+      }
+    ]
+  },
+  {
+    "title": "UFC Fight Night: Tsarukyan vs Hooker",
+    "date": "2026-04-04",
+    "location": "UFC Apex, Las Vegas",
+    "main_event": "Arman Tsarukyan vs Dan Hooker",
+    "title_fight": false,
+    "division": "Lightweight",
+    "status": "past",
+    "fights": [
+      {
+        "a": "Arman Tsarukyan",
+        "b": "Dan Hooker",
+        "winner": "Arman Tsarukyan",
+        "method": "TKO R2"
+      }
+    ]
+  },
+  {
+    "title": "UFC 326: Pereira vs Ankalaev",
+    "date": "2026-03-08",
+    "location": "T-Mobile Arena, Las Vegas",
+    "main_event": "Alex Pereira vs Magomed Ankalaev",
+    "title_fight": true,
+    "division": "Light Heavyweight Title",
+    "status": "past",
+    "fights": [
+      {
+        "a": "Alex Pereira",
+        "b": "Magomed Ankalaev",
+        "winner": "Magomed Ankalaev",
+        "method": "Decision"
+      }
+    ]
+  },
+  {
+    "title": "UFC 327: Topuria vs Holloway",
+    "date": "2026-04-26",
+    "location": "Kaseya Center, Miami",
+    "main_event": "Ilia Topuria vs Max Holloway",
+    "title_fight": true,
+    "division": "Lightweight Title",
+    "status": "past",
+    "fights": [
+      {
+        "a": "Ilia Topuria",
+        "b": "Max Holloway",
+        "winner": "Ilia Topuria",
+        "method": "KO R3"
+      },
+      {
+        "a": "Belal Muhammad",
+        "b": "Jack Della Maddalena",
+        "winner": "Jack Della Maddalena",
+        "method": "Decision"
+      }
+    ]
+  },
+  {
+    "title": "UFC 328: Chimaev vs Strickland",
+    "date": "2026-05-30",
+    "location": "T-Mobile Arena, Las Vegas",
+    "main_event": "Khamzat Chimaev vs Sean Strickland",
+    "title_fight": true,
+    "division": "Middleweight Title",
+    "status": "upcoming",
+    "fights": [
+      [
+        "Khamzat Chimaev",
+        "Sean Strickland"
+      ],
+      [
+        "Merab Dvalishvili",
+        "Petr Yan"
+      ],
+      [
+        "Arman Tsarukyan",
+        "Charles Oliveira"
+      ]
+    ]
+  },
+  {
+    "title": "UFC Fight Night: Aspinall vs Volkov 2",
+    "date": "2026-06-06",
+    "location": "O2 Arena, London",
+    "main_event": "Tom Aspinall vs Alexander Volkov",
+    "title_fight": true,
+    "division": "Heavyweight Title",
+    "status": "upcoming",
+    "fights": [
+      [
+        "Tom Aspinall",
+        "Alexander Volkov"
+      ]
+    ]
+  },
+  {
+    "title": "UFC 329: Makhachev vs Topuria",
+    "date": "2026-06-13",
+    "location": "Etihad Arena, Abu Dhabi",
+    "main_event": "Islam Makhachev vs Ilia Topuria",
+    "title_fight": true,
+    "division": "Lightweight Title",
+    "status": "upcoming",
+    "fights": [
+      [
+        "Islam Makhachev",
+        "Ilia Topuria"
+      ],
+      [
+        "Shavkat Rakhmonov",
+        "Jack Della Maddalena"
+      ]
+    ]
+  },
+  {
+    "title": "UFC at the White House 🇺🇸",
+    "date": "2026-07-04",
+    "location": "South Lawn, Белый Дом, Вашингтон",
+    "main_event": "Jon Jones vs Tom Aspinall — Heavyweight Unification",
+    "title_fight": true,
+    "division": "Heavyweight Title",
+    "status": "upcoming",
+    "special": true,
+    "fights": [
+      [
+        "Jon Jones",
+        "Tom Aspinall"
+      ],
+      [
+        "Khamzat Chimaev",
+        "Dricus du Plessis"
+      ],
+      [
+        "Islam Makhachev",
+        "Arman Tsarukyan"
+      ]
+    ]
+  },
+  {
+    "title": "UFC 330: JDM vs Rakhmonov 2",
+    "date": "2026-07-18",
+    "location": "Madison Square Garden, New York",
+    "main_event": "Jack Della Maddalena vs Shavkat Rakhmonov 2",
+    "title_fight": true,
+    "division": "Welterweight Title",
+    "status": "upcoming",
+    "fights": [
+      [
+        "Jack Della Maddalena",
+        "Shavkat Rakhmonov"
+      ]
+    ]
+  },
+  {
+    "title": "UFC Fight Night: Poirier vs Oliveira 2",
+    "date": "2026-08-08",
+    "location": "Smoothie King Center, New Orleans",
+    "main_event": "Dustin Poirier vs Charles Oliveira 2",
+    "title_fight": false,
+    "division": "Lightweight",
+    "status": "upcoming",
+    "fights": [
+      [
+        "Dustin Poirier",
+        "Charles Oliveira"
+      ]
+    ]
+  },
+  {
+    "title": "UFC 331: Merab vs Yan 2",
+    "date": "2026-09-05",
+    "location": "Kaseya Center, Miami",
+    "main_event": "Merab Dvalishvili vs Petr Yan 2",
+    "title_fight": true,
+    "division": "Bantamweight Title",
+    "status": "upcoming",
+    "fights": [
+      [
+        "Merab Dvalishvili",
+        "Petr Yan"
+      ]
+    ]
+  }
+]

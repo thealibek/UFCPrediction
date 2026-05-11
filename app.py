@@ -15,16 +15,20 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from data_seed import DEFAULT_FIGHTERS, DEFAULT_EVENTS
+from live_data import get_live_events
 
 # ---------- Файлы ----------
 FIGHTERS_FILE = "fighters.json"
 EVENTS_FILE = "upcoming_events.json"
 HISTORY_FILE = "history.json"
 
-UFC_RED = "#E30613"
+UFC_RED = "#D20A0A"
 UFC_GOLD = "#D4AF37"
-BG = "#0D0D0D"
-CARD_BG = "#161616"
+BG = "#FFFFFF"
+CARD_BG = "#FAFAFA"
+TEXT = "#111111"
+MUTED = "#666666"
+BORDER = "#E5E5E5"
 
 DIVISIONS = [
     "Strawweight", "Flyweight", "Bantamweight", "Featherweight",
@@ -114,66 +118,420 @@ st.set_page_config(page_title="UFC AI Предиктор | Octagon Oracle",
 
 CUSTOM_CSS = f"""
 <style>
-.stApp {{ background-color: {BG}; color: #FFFFFF; }}
-section[data-testid="stSidebar"] {{ background-color: #0A0A0A; border-right: 1px solid #222; }}
-h1, h2, h3, h4 {{ color: #FFFFFF !important; letter-spacing: 0.3px; }}
-h1 {{ border-bottom: 3px solid {UFC_RED}; padding-bottom: 8px; }}
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ===== UFC.com Clean Light Theme ===== */
+html, body, [class*="css"] {{
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important;
+}}
+.stApp {{ background-color: {BG}; color: {TEXT}; }}
+
+/* === SIDEBAR — белая, чёрный текст, как UFC.com nav === */
+section[data-testid="stSidebar"] {{
+    background-color: #FFFFFF !important;
+    border-right: 1px solid {BORDER};
+}}
+section[data-testid="stSidebar"] * {{ color: {TEXT} !important; }}
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {{
+    color: {TEXT} !important;
+    font-family: 'Oswald', sans-serif !important;
+    font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+}}
+section[data-testid="stSidebar"] .stCaption,
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+section[data-testid="stSidebar"] small {{
+    color: {MUTED} !important;
+}}
+/* Sidebar radio nav: UFC-style menu items */
+section[data-testid="stSidebar"] [data-testid="stRadio"] > div {{
+    gap: 0 !important;
+}}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label {{
+    background: transparent;
+    border-left: 3px solid transparent;
+    padding: 11px 14px !important;
+    margin: 0 !important;
+    font-family: 'Oswald', sans-serif !important;
+    font-weight: 600; font-size: 0.95rem;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    color: {TEXT} !important;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer; transition: all 0.12s;
+    width: 100%;
+}}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {{
+    background: #f7f7f7; border-left-color: {UFC_RED};
+}}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"],
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {{
+    background: #fff5f5;
+    border-left: 3px solid {UFC_RED};
+    color: {UFC_RED} !important;
+}}
+section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {{
+    display: none !important;
+}}
+/* Sidebar buttons */
+section[data-testid="stSidebar"] .stButton>button {{
+    background: {TEXT}; color: white !important;
+    border: none; font-family: 'Oswald', sans-serif !important;
+    font-weight: 600; letter-spacing: 1px;
+}}
+section[data-testid="stSidebar"] .stButton>button:hover {{ background: {UFC_RED}; }}
+/* Sidebar inputs visible */
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] textarea,
+section[data-testid="stSidebar"] [data-baseweb="select"] > div {{
+    background: white !important;
+    color: {TEXT} !important;
+    border: 1px solid {BORDER} !important;
+}}
+
+/* === HEADINGS === */
+h1, h2, h3, h4, h5 {{
+    color: {TEXT} !important;
+    font-family: 'Oswald', sans-serif !important;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+}}
+h1 {{ border-bottom: 3px solid {UFC_RED}; padding-bottom: 10px; font-size: 2rem; }}
+h2 {{ font-size: 1.6rem; }}
+h3 {{ font-size: 1.25rem; }}
+
+/* === BUTTONS === */
 .stButton>button {{
-    background: linear-gradient(135deg, {UFC_RED}, #8B0000);
-    color: white; border: none; font-weight: 700; letter-spacing: 0.5px;
-    padding: 10px 18px; border-radius: 6px; transition: all 0.15s;
+    background: {UFC_RED}; color: white !important;
+    border: none; font-weight: 700; letter-spacing: 1px;
+    padding: 10px 20px; border-radius: 2px;
+    text-transform: uppercase; font-size: 0.82rem;
+    font-family: 'Oswald', sans-serif !important;
+    transition: all 0.12s;
 }}
-.stButton>button:hover {{ filter: brightness(1.15); transform: translateY(-1px); }}
+.stButton>button:hover {{ background: #a30808; transform: translateY(-1px); }}
+
+/* === METRICS === */
 [data-testid="stMetric"] {{
-    background: {CARD_BG}; padding: 14px; border-radius: 8px;
-    border-left: 4px solid {UFC_RED};
+    background: white; padding: 16px; border-radius: 4px;
+    border: 1px solid {BORDER}; border-left: 4px solid {UFC_RED};
 }}
-[data-testid="stMetricLabel"] {{ color: {UFC_GOLD} !important; }}
+[data-testid="stMetricLabel"] {{
+    color: {MUTED} !important; font-weight: 700;
+    text-transform: uppercase; font-size: 0.72rem; letter-spacing: 1px;
+    font-family: 'Inter', sans-serif !important;
+}}
+[data-testid="stMetricValue"] {{
+    color: {TEXT} !important;
+    font-family: 'Oswald', sans-serif !important;
+    font-weight: 700; font-size: 2rem !important;
+}}
+[data-testid="stMetricDelta"] {{ color: {MUTED} !important; }}
+
+/* === CARDS / TAGS === */
 .fighter-card {{
-    background: linear-gradient(180deg, {CARD_BG}, #0D0D0D);
-    border: 1px solid #222; border-left: 4px solid {UFC_RED};
-    padding: 16px; border-radius: 8px; margin-bottom: 12px;
+    background: white; border: 1px solid {BORDER};
+    border-left: 4px solid {UFC_RED};
+    padding: 16px; border-radius: 4px; margin-bottom: 12px;
 }}
-.event-card {{
-    background: {CARD_BG}; border: 1px solid #222;
-    border-left: 4px solid {UFC_GOLD};
-    padding: 14px 18px; border-radius: 8px; margin-bottom: 10px;
-}}
-.event-past {{
-    background: #0F0F0F; border: 1px solid #1a1a1a;
-    border-left: 4px solid #444; opacity: 0.85;
-    padding: 14px 18px; border-radius: 8px; margin-bottom: 10px;
-}}
-.event-special {{
-    background: linear-gradient(135deg, #1a0000, #1a1400);
-    border: 2px solid {UFC_GOLD}; border-left: 6px solid {UFC_RED};
-    padding: 16px 20px; border-radius: 10px; margin-bottom: 12px;
-    box-shadow: 0 0 20px rgba(212,175,55,0.15);
-}}
-.event-title {{ color: {UFC_GOLD}; font-weight: 700; font-size: 1.05rem; }}
-.tag-red {{ background: {UFC_RED}; color: white; padding: 2px 8px;
-    border-radius: 4px; font-size: 0.75rem; font-weight: 700; }}
-.tag-gold {{ background: {UFC_GOLD}; color: #000; padding: 2px 8px;
-    border-radius: 4px; font-size: 0.75rem; font-weight: 700; }}
-.tag-grey {{ background: #333; color: #ccc; padding: 2px 8px;
-    border-radius: 4px; font-size: 0.75rem; font-weight: 700; }}
+.tag-red {{ background: {UFC_RED}; color: white; padding: 3px 10px;
+    border-radius: 2px; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 1.5px; font-family: 'Oswald', sans-serif; }}
+.tag-gold {{ background: {TEXT}; color: white; padding: 3px 10px;
+    border-radius: 2px; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 1.5px; font-family: 'Oswald', sans-serif; }}
+.tag-grey {{ background: #ccc; color: {TEXT}; padding: 3px 10px;
+    border-radius: 2px; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 1.5px; font-family: 'Oswald', sans-serif; }}
+
+/* === HERO === */
 .hero {{
-    background: linear-gradient(135deg, #1a0000, {BG} 60%);
-    padding: 24px; border-radius: 10px;
-    border: 1px solid #2a0000; margin-bottom: 16px;
+    background: #000; color: white !important;
+    padding: 32px 36px; border-radius: 4px;
+    border-bottom: 4px solid {UFC_RED}; margin-bottom: 22px;
 }}
-.hero h1 {{ font-size: 2.2rem; margin: 0; }}
-.hero p {{ color: {UFC_GOLD}; font-size: 1.05rem; margin: 6px 0 0 0; }}
+.hero h1 {{
+    font-size: 2.6rem; margin: 0; color: white !important;
+    border: none; font-family: 'Oswald', sans-serif !important;
+    font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+}}
+.hero p {{ color: #ccc; font-size: 1rem; margin: 8px 0 0 0;
+    font-family: 'Inter', sans-serif !important;
+    text-transform: uppercase; letter-spacing: 2px; font-size: 0.85rem; }}
+
+/* === HERO STATS — продающие плашки === */
+.hero-stats {{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}}
+.hs-card {{
+    background: white;
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    padding: 18px 16px;
+    position: relative; overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+}}
+.hs-card:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}}
+.hs-card::before {{
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 100%; height: 4px; background: {UFC_RED};
+}}
+.hs-card.hs-won::before {{ background: #16a34a; }}
+.hs-card.hs-lost::before {{ background: #dc2626; }}
+.hs-card.hs-pending::before {{ background: #ca8a04; }}
+.hs-card.hs-event::before {{ background: {TEXT}; }}
+.hs-card.hs-primary {{
+    background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
+    border: none;
+}}
+.hs-card.hs-primary::before {{ background: {UFC_RED}; height: 5px; }}
+.hs-card.hs-primary .hs-label,
+.hs-card.hs-primary .hs-value,
+.hs-card.hs-primary .hs-sub {{ color: white !important; }}
+.hs-card.hs-primary .hs-value {{ color: {UFC_RED} !important; }}
+
+.hs-label {{
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 1.5px; color: {MUTED} !important;
+    text-transform: uppercase; margin-bottom: 6px;
+}}
+.hs-value {{
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.4rem; font-weight: 700;
+    color: {TEXT}; line-height: 1; margin-bottom: 4px;
+}}
+.hs-card.hs-won .hs-value {{ color: #16a34a; }}
+.hs-card.hs-lost .hs-value {{ color: #dc2626; }}
+.hs-card.hs-pending .hs-value {{ color: #ca8a04; }}
+.hs-card.hs-event .hs-value {{ color: {TEXT}; }}
+.hs-sub {{
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem; color: {MUTED} !important;
+    font-weight: 500;
+}}
+@media (max-width: 1100px) {{
+    .hero-stats {{ grid-template-columns: repeat(2, 1fr); }}
+}}
+
+/* === STAT BOXES === */
 .stat-box {{
-    background: {CARD_BG}; padding: 14px; border-radius: 8px;
-    border: 1px solid #222; margin-bottom: 10px;
+    background: white; padding: 16px; border-radius: 4px;
+    border: 1px solid {BORDER}; margin-bottom: 10px;
 }}
-.stat-box h4 {{ margin: 0 0 6px 0; color: {UFC_GOLD} !important; font-size: 0.9rem; }}
-.stat-box .v {{ font-size: 1.8rem; font-weight: 700; color: white; }}
-.bet-won {{ color: #2ecc71; font-weight: 700; }}
-.bet-lost {{ color: #e74c3c; font-weight: 700; }}
-.bet-pending {{ color: {UFC_GOLD}; font-weight: 700; }}
-hr {{ border-color: #222; }}
+.stat-box h4 {{ margin: 0 0 6px 0; color: {MUTED} !important;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px;
+    font-family: 'Inter', sans-serif !important; font-weight: 600; }}
+.stat-box .v {{ font-size: 2rem; font-weight: 700; color: {TEXT};
+    font-family: 'Oswald', sans-serif; }}
+.bet-won {{ color: #16a34a; font-weight: 700; }}
+.bet-lost {{ color: #dc2626; font-weight: 700; }}
+.bet-pending {{ color: #ca8a04; font-weight: 700; }}
+hr {{ border-color: {BORDER}; }}
+
+/* === INPUTS === */
+.stTextInput input, .stTextArea textarea {{
+    background: white !important;
+    border: 1px solid {BORDER} !important;
+    color: {TEXT} !important;
+    border-radius: 2px;
+}}
+.stSelectbox div[data-baseweb="select"] > div {{
+    background: white !important;
+    border: 1px solid {BORDER} !important;
+    color: {TEXT} !important;
+}}
+.stDataFrame {{ border: 1px solid {BORDER}; border-radius: 4px; }}
+.stRadio label {{ color: {TEXT} !important; }}
+
+/* ===== UFC.com Fight Card ===== */
+.ufc-card-header {{
+    background: #000; border-bottom: 4px solid {UFC_RED};
+    padding: 22px 28px; border-radius: 4px 4px 0 0;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 24px;
+}}
+.ufc-card-header .title {{
+    font-family: 'Oswald', sans-serif !important; font-size: 1.9rem;
+    color: white !important; letter-spacing: 2.5px; margin: 0;
+    text-transform: uppercase; font-weight: 700;
+}}
+.ufc-card-header .meta {{
+    color: #ccc; font-size: 0.78rem; text-align: right;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    font-family: 'Inter', sans-serif !important; font-weight: 500;
+}}
+.ufc-bout {{
+    background: white; border: 1px solid {BORDER};
+    border-top: none; padding: 0; margin: 0; overflow: hidden;
+}}
+.ufc-bout-label {{
+    text-align: center; color: {MUTED}; font-size: 0.7rem;
+    letter-spacing: 3px; padding: 14px 0 10px 0; font-weight: 600;
+    text-transform: uppercase; background: white;
+    border-bottom: 1px solid #f5f5f5;
+    font-family: 'Inter', sans-serif !important;
+}}
+.ufc-row {{
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; padding: 22px 28px; gap: 18px;
+    background: white;
+}}
+.ufc-fighter {{ display: flex; align-items: center; gap: 18px; }}
+.ufc-fighter.left {{ justify-content: flex-end; text-align: right; }}
+.ufc-fighter.right {{ justify-content: flex-start; text-align: left; }}
+.ufc-fighter img.headshot {{
+    width: 96px; height: 96px; border-radius: 50%;
+    object-fit: cover; background: #f5f5f5;
+    border: 1px solid {BORDER};
+}}
+.ufc-fighter .info {{ display: flex; flex-direction: column; }}
+.ufc-fighter .rank {{
+    color: {MUTED}; font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 1px; font-family: 'Inter', sans-serif;
+}}
+.ufc-fighter .name {{
+    font-family: 'Oswald', sans-serif !important;
+    font-size: 1.5rem; color: {TEXT}; line-height: 1.05;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin: 3px 0; font-weight: 700;
+}}
+.ufc-fighter .country {{
+    color: {MUTED}; font-size: 0.72rem; margin-top: 6px;
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; font-family: 'Inter', sans-serif;
+}}
+.ufc-fighter.left .country {{ justify-content: flex-end; }}
+.ufc-fighter .country img {{
+    width: 22px; height: 14px; object-fit: cover;
+    border-radius: 1px; border: 1px solid {BORDER};
+}}
+.ufc-vs {{
+    font-family: 'Oswald', sans-serif !important; font-size: 1.4rem;
+    color: {MUTED}; font-weight: 600; letter-spacing: 2px;
+    text-align: center; min-width: 60px;
+}}
+.ufc-odds-row {{
+    display: flex; justify-content: center; gap: 28px;
+    border-top: 1px solid #f5f5f5; padding: 12px 24px;
+    background: white; color: {TEXT}; font-size: 0.9rem;
+    align-items: center;
+}}
+.ufc-odds-row .o {{
+    font-weight: 700; font-size: 0.95rem;
+    font-family: 'Inter', sans-serif;
+}}
+.ufc-odds-row .o.fav {{ color: #16a34a; }}
+.ufc-odds-row .o.dog {{ color: {UFC_RED}; }}
+.ufc-odds-row .lbl {{
+    color: {MUTED}; letter-spacing: 2px;
+    font-size: 0.68rem; font-weight: 700;
+    text-decoration: underline; text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+}}
+.ufc-status {{
+    text-align: center; color: {UFC_RED}; font-weight: 700;
+    font-size: 0.72rem; letter-spacing: 2px; padding: 9px 0;
+    background: #fafafa; border-top: 1px solid #f5f5f5;
+    text-transform: uppercase;
+    font-family: 'Oswald', sans-serif !important;
+}}
+.ufc-winner-badge {{ color: #16a34a !important; }}
+.ufc-check {{
+    color: #16a34a; font-weight: 900;
+    font-size: 1.1em; margin: 0 4px;
+}}
+.headshot-wrap {{ position: relative; display: inline-block; }}
+.headshot-wrap.winner img.headshot {{
+    border: 3px solid #16a34a;
+}}
+.headshot-wrap .win-overlay {{
+    position: absolute; bottom: -2px; right: -2px;
+    background: #16a34a; color: white;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 14px;
+    border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}}
+
+/* === CONTRAST FIXES — всё видно на белом === */
+.stApp p, .stApp span, .stApp li, .stApp label, .stApp div {{
+    color: {TEXT};
+}}
+.stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown strong {{
+    color: {TEXT} !important;
+}}
+.stCaption, [data-testid="stCaptionContainer"], small {{
+    color: {MUTED} !important;
+}}
+[data-testid="stExpander"] {{
+    background: white !important;
+    border: 1px solid {BORDER}; border-radius: 4px;
+    margin-bottom: 8px;
+}}
+[data-testid="stExpander"] details {{ background: white !important; }}
+[data-testid="stExpander"] details summary {{
+    color: {TEXT} !important; font-weight: 600;
+    background: white !important;
+    font-family: 'Oswald', sans-serif !important;
+    letter-spacing: 1px; padding: 12px 16px;
+}}
+[data-testid="stExpander"] details summary:hover {{ background: #fafafa !important; }}
+[data-testid="stExpander"] details summary p {{ color: {TEXT} !important; }}
+[data-testid="stExpander"] details > div {{
+    background: white !important; padding: 14px 16px;
+}}
+.stTabs [data-baseweb="tab"] {{
+    color: {TEXT} !important; font-family: 'Oswald', sans-serif;
+    font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+}}
+.stTabs [aria-selected="true"] {{
+    color: {UFC_RED} !important; border-bottom-color: {UFC_RED} !important;
+}}
+.stAlert, [data-testid="stAlert"] {{
+    background: white !important;
+    border: 1px solid {BORDER} !important;
+    border-left: 4px solid {UFC_RED} !important;
+    color: {TEXT} !important;
+}}
+.stAlert *, [data-testid="stAlert"] * {{ color: {TEXT} !important; }}
+.stRadio > div > label > div {{ color: {TEXT} !important; }}
+.stCheckbox > label, .stCheckbox > label * {{ color: {TEXT} !important; }}
+.stForm {{ background: white; border: 1px solid {BORDER}; padding: 14px; border-radius: 4px; }}
+.stToggle label, .stToggle span {{ color: {TEXT} !important; }}
+.stNumberInput input, .stDateInput input {{
+    background: white !important; color: {TEXT} !important;
+    border: 1px solid {BORDER} !important;
+}}
+[data-testid="stFileUploader"] {{ background: white; border: 2px dashed {BORDER}; }}
+[data-testid="stFileUploader"] * {{ color: {TEXT} !important; }}
+.stDownloadButton button {{ background: {TEXT} !important; }}
+.stDownloadButton button:hover {{ background: {UFC_RED} !important; }}
+table {{ color: {TEXT}; }}
+[data-testid="stDataFrame"] * {{ color: {TEXT} !important; }}
+
+/* Sidebar watchlist (теперь на белом sidebar) */
+.watch-item {{
+    background: #fafafa; border-left: 3px solid {UFC_RED};
+    padding: 10px 12px; margin-bottom: 6px; border-radius: 2px;
+    font-size: 0.82rem; color: {TEXT} !important;
+    border-top: 1px solid {BORDER};
+    border-right: 1px solid {BORDER};
+    border-bottom: 1px solid {BORDER};
+}}
+.watch-item b {{ color: {TEXT} !important;
+    font-family: 'Oswald', sans-serif; letter-spacing: 0.5px; }}
+
+/* Streamlit links */
+a {{ color: {UFC_RED} !important; }}
+
+/* Hide Streamlit chrome */
+#MainMenu, footer, header {{ visibility: hidden; }}
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -193,6 +551,8 @@ if "last_analysis" not in st.session_state:
     st.session_state.last_analysis = None
 if "page" not in st.session_state:
     st.session_state.page = "🏠 Home"
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = []  # list of {a, b, event}
 
 
 def persist_fighters(): save_json(FIGHTERS_FILE, st.session_state.fighters)
@@ -228,6 +588,86 @@ def extract_main_bet(analysis: str) -> str:
     if m:
         return f"Берем {m.group(1).strip()} Moneyline"
     return "—"
+
+
+def extract_predicted_winner(analysis: str) -> str:
+    """Достаём имя предсказанного победителя из вывода LLM."""
+    if not analysis:
+        return ""
+    patterns = [
+        r"Победитель:\s*\*\*([^*\n]+)\*\*",
+        r"\*\*Победитель:\s*([^*\n]+)\*\*",
+        r"Winner:\s*\*\*([^*\n]+)\*\*",
+        r"Победит[ьея]+\s*\*\*([^*\n]+)\*\*",
+    ]
+    for p in patterns:
+        m = re.search(p, analysis, re.IGNORECASE)
+        if m:
+            return m.group(1).strip().split("—")[0].split("(")[0].strip()
+    return ""
+
+
+def _name_match(a: str, b: str) -> bool:
+    """Толерантное сравнение имён бойцов."""
+    if not a or not b:
+        return False
+    na = re.sub(r"[^a-zа-я0-9 ]", "", a.lower()).strip()
+    nb = re.sub(r"[^a-zа-я0-9 ]", "", b.lower()).strip()
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    # Match by last name + intersection
+    ta, tb = set(na.split()), set(nb.split())
+    return len(ta & tb) >= 1 and (na in nb or nb in na or len(ta & tb) >= 2)
+
+
+def auto_resolve_predictions(espn_events: list) -> int:
+    """Идём по pending прогнозам, ищем завершённые бои в ESPN, проставляем won/lost.
+    Возвращает кол-во резолвнутых."""
+    if not espn_events:
+        return 0
+    resolved = 0
+    for h in st.session_state.history:
+        if h.get("status") != "pending":
+            continue
+        # Найти соответствующий бой в ESPN
+        for ev in espn_events:
+            for f in ev.get("fights", []):
+                if not f.get("completed"):
+                    continue
+                a_name = (f.get("a") or {}).get("name", "")
+                b_name = (f.get("b") or {}).get("name", "")
+                if not (_name_match(h.get("fighter_a", ""), a_name) or
+                        _name_match(h.get("fighter_a", ""), b_name)):
+                    continue
+                if not (_name_match(h.get("fighter_b", ""), a_name) or
+                        _name_match(h.get("fighter_b", ""), b_name)):
+                    continue
+                # Нашли бой
+                actual_winner = ""
+                if (f.get("a") or {}).get("winner"):
+                    actual_winner = a_name
+                elif (f.get("b") or {}).get("winner"):
+                    actual_winner = b_name
+                if not actual_winner:
+                    break
+                predicted = h.get("predicted_winner") or extract_predicted_winner(h.get("analysis", ""))
+                if not predicted:
+                    break
+                h["predicted_winner"] = predicted
+                h["actual_winner"] = actual_winner
+                h["actual_method"] = f.get("method", "")
+                h["status"] = "won" if _name_match(predicted, actual_winner) else "lost"
+                h["resolved_at"] = datetime.now().isoformat()
+                resolved += 1
+                break
+            else:
+                continue
+            break
+    if resolved > 0:
+        persist_history()
+    return resolved
 
 
 # ---------- Demo analysis ----------
@@ -302,15 +742,22 @@ def get_fight_prediction(fa, fb, ctx, intel, api_key, base_url, model):
 
 # ---------- Sidebar: Navigation + Settings ----------
 with st.sidebar:
-    st.markdown(f"<h2 style='color:{UFC_RED};margin:0'>🥊 OCTAGON ORACLE</h2>",
-                unsafe_allow_html=True)
-    st.caption("UFC AI Предиктор")
+    st.markdown(
+        f"<div style='border-bottom:3px solid {UFC_RED};padding-bottom:10px;margin-bottom:14px'>"
+        f"<h2 style='color:{TEXT};margin:0;font-family:Oswald,sans-serif;"
+        f"letter-spacing:1.5px;font-weight:700'>🥊 OCTAGON ORACLE</h2>"
+        f"<div style='color:{MUTED};font-size:0.72rem;letter-spacing:2px;"
+        f"text-transform:uppercase;margin-top:4px'>UFC AI Predictor</div>"
+        f"</div>",
+        unsafe_allow_html=True)
     st.markdown("---")
 
     PAGES = [
         "🏠 Home",
+        "🔴 Live Card",
         "👥 Fight Base",
         "🔮 Predictor",
+        "🧠 Knowledge Base",
         "📊 Analytics",
         "⚖️ Weight Cut",
         "📚 History",
@@ -333,12 +780,40 @@ with st.sidebar:
     ])
 
     st.markdown("---")
+    st.subheader("📋 Watchlist")
+    st.caption("Бои под наблюдением")
+    if not st.session_state.watchlist:
+        st.markdown("<span style='color:#666;font-size:0.85rem'>"
+                    "Пусто. Добавь бой кнопкой 👁️ из Live Card или Home.</span>",
+                    unsafe_allow_html=True)
+    else:
+        for wi, w in enumerate(st.session_state.watchlist):
+            col_a, col_b = st.columns([4, 1])
+            col_a.markdown(
+                f"<div class='watch-item'><b>{w['a']}</b><br>"
+                f"<span style='color:#666'>vs</span> <b>{w['b']}</b><br>"
+                f"<span style='color:#888;font-size:0.7rem'>{w.get('event','')}</span></div>",
+                unsafe_allow_html=True)
+            if col_b.button("✕", key=f"rmw_{wi}"):
+                st.session_state.watchlist.pop(wi)
+                st.rerun()
+        if st.button("→ В Predictor (последний)", use_container_width=True):
+            w = st.session_state.watchlist[0]
+            st.session_state.preselect = {
+                "a": w["a"], "b": w["b"], "event": w.get("event", ""),
+                "rounds": w.get("rounds", 3),
+                "title_fight": w.get("title_fight", False),
+            }
+            st.session_state.page = "🔮 Predictor"
+            st.rerun()
+
+    st.markdown("---")
     if st.button("🔄 Сбросить события к дефолту"):
         st.session_state.events = DEFAULT_EVENTS
         persist_events()
         st.success("Events updated.")
         st.rerun()
-    st.caption("📊 Данные: ufcstats.com / FightMetric. База редактируется юзером.")
+    st.caption("📊 Данные: ESPN API (real-time) + ufcstats.com / FightMetric.")
 
 
 # ---------- HEADER ----------
@@ -349,6 +824,257 @@ st.markdown(
     </div>""",
     unsafe_allow_html=True,
 )
+
+
+# =================================================================
+# UFC.com-style fight card renderer
+# =================================================================
+# Inline SVG силуэт — всегда работает, без интернета
+PLACEHOLDER_HEADSHOT = (
+    "data:image/svg+xml;utf8,"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>"
+    "<rect width='100' height='100' fill='%23f0f0f0'/>"
+    "<circle cx='50' cy='38' r='16' fill='%23b8b8b8'/>"
+    "<path d='M22 92 Q22 64 50 64 Q78 64 78 92 Z' fill='%23b8b8b8'/>"
+    "</svg>"
+)
+
+
+def _safe(s, default=""):
+    return s if s else default
+
+
+def _slugify(name: str) -> str:
+    """Кириллицу убираем, остаётся только ASCII slug — UFC.com использует такой."""
+    s = (name or "").lower()
+    s = re.sub(r"['`’]", "", s)
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    return s.strip("-")
+
+
+def _photo_with_fallback(fighter: dict) -> tuple[str, str]:
+    """Возвращает (src, onerror_attr) с каскадом:
+    1. ESPN headshot (если в API был)
+    2. ESPN CDN по athlete_id
+    3. UFC.com CDN по slug
+    4. SVG placeholder
+    """
+    name = fighter.get("name", "")
+    espn_id = fighter.get("id")
+    primary = fighter.get("photo")  # уже содержит ESPN URL (с fallback на CDN/id)
+
+    # Кандидаты в порядке убывания приоритета
+    chain = []
+    if primary:
+        chain.append(primary)
+    if espn_id and (not primary or "espncdn" not in str(primary)):
+        chain.append(f"https://a.espncdn.com/i/headshots/mma/players/full/{espn_id}.png")
+    slug = _slugify(name)
+    if slug:
+        # UFC.com Athlete Profile CDN — bio image
+        chain.append(
+            f"https://dmxg5wxfqgb4u.cloudfront.net/styles/athlete_bio_full_body/"
+            f"s3/image/{slug}.png"
+        )
+        # UFC.com general athletes CDN
+        chain.append(
+            f"https://www.ufc.com/themes/custom/ufc/assets/img/athletes/{slug}.png"
+        )
+    chain.append(PLACEHOLDER_HEADSHOT)
+
+    src = chain[0]
+    # Строим вложенный onerror chain
+    onerror_js = ""
+    for i in range(len(chain) - 1, 0, -1):
+        next_url = chain[i].replace("'", "\\'")
+        if i == len(chain) - 1:
+            onerror_js = f"this.onerror=null;this.src='{next_url}';"
+        else:
+            onerror_js = (
+                f"this.onerror=function(){{{onerror_js}}};"
+                f"this.src='{next_url}';"
+            )
+    return src, onerror_js
+
+
+def render_ufc_bout(fight: dict, idx: str, allow_actions: bool = True,
+                     hide_photos: bool = False):
+    """Рендер одного боя в UFC.com-стиле.
+    fight: {weight_class, a:{name,country,flag_url,photo,rank,winner}, b:{...},
+            odds_a, odds_b, status, completed}
+    """
+    a = fight.get("a", {})
+    b = fight.get("b", {})
+    wc = fight.get("weight_class", "Bout")
+
+    # photos с каскадом fallback: ESPN → UFC.com → placeholder
+    photo_a, onerror_a = _photo_with_fallback(a)
+    photo_b, onerror_b = _photo_with_fallback(b)
+
+    # flags
+    flag_a = (f"<img src='{a['flag_url']}' alt=''/>"
+              if a.get("flag_url") else "🌍")
+    flag_b = (f"<img src='{b['flag_url']}' alt=''/>"
+              if b.get("flag_url") else "🌍")
+
+    rank_a = f"<div class='rank'>#{a['rank']}</div>" if a.get("rank") else ""
+    rank_b = f"<div class='rank'>#{b['rank']}</div>" if b.get("rank") else ""
+
+    name_a = a.get("name", "TBD")
+    name_b = b.get("name", "TBD")
+
+    # winner highlight + galochka
+    winner_a_cls = "ufc-winner-badge" if a.get("winner") else ""
+    winner_b_cls = "ufc-winner-badge" if b.get("winner") else ""
+    check_a = "<span class='ufc-check'>✓</span> " if a.get("winner") else ""
+    check_b = " <span class='ufc-check'>✓</span>" if b.get("winner") else ""
+    winner_a = f"{check_a}{winner_a_cls}" if False else winner_a_cls  # сохраняем имя
+    winner_b = winner_b_cls
+
+    odds_block = ""
+    if fight.get("odds_a") or fight.get("odds_b"):
+        odds_block = f"""<div class='ufc-odds-row'>
+            <span class='o fav'>{_safe(fight.get('odds_a'), '—')}</span>
+            <span class='lbl'>ODDS</span>
+            <span class='o dog'>{_safe(fight.get('odds_b'), '—')}</span>
+        </div>"""
+
+    status_block = ""
+    if fight.get("completed"):
+        method = fight.get("method", "FINAL") or "FINAL"
+        winner_name = (a.get("name") if a.get("winner")
+                       else b.get("name") if b.get("winner") else None)
+        if winner_name:
+            status_block = (
+                f"<div class='ufc-status'>"
+                f"<b>{winner_name}</b> def. opponent · {method}"
+                f"</div>"
+            )
+        else:
+            status_block = f"<div class='ufc-status'>FINAL · {method}</div>"
+    elif fight.get("status") and "Scheduled" not in fight.get("status", ""):
+        status_block = f"<div class='ufc-status'>{fight.get('status','').upper()}</div>"
+
+    # Win-photo overlay
+    photo_overlay_a = "<div class='win-overlay'>✓</div>" if a.get("winner") else ""
+    photo_overlay_b = "<div class='win-overlay'>✓</div>" if b.get("winner") else ""
+    photo_class_a = "headshot-wrap" + (" winner" if a.get("winner") else "")
+    photo_class_b = "headshot-wrap" + (" winner" if b.get("winner") else "")
+
+    if hide_photos:
+        photo_block_a = ""
+        photo_block_b = ""
+    else:
+        photo_block_a = (f"<div class='{photo_class_a}'>"
+                        f"<img class='headshot' src='{photo_a}' alt='' "
+                        f"onerror=\"{onerror_a}\"/>"
+                        f"{photo_overlay_a}</div>")
+        photo_block_b = (f"<div class='{photo_class_b}'>"
+                        f"<img class='headshot' src='{photo_b}' alt='' "
+                        f"onerror=\"{onerror_b}\"/>"
+                        f"{photo_overlay_b}</div>")
+
+    # Собираем HTML БЕЗ переносов/отступов чтобы markdown не превратил в codeblock
+    html = (
+        f"<div class='ufc-bout'>"
+        f"<div class='ufc-bout-label'>{wc}</div>"
+        f"<div class='ufc-row'>"
+            f"<div class='ufc-fighter left'>"
+                f"<div class='info'>"
+                    f"{rank_a}"
+                    f"<div class='name {winner_a}'>{check_a}{name_a}</div>"
+                    f"<div class='country'>{flag_a} {a.get('country','')}</div>"
+                f"</div>"
+                f"{photo_block_a}"
+            f"</div>"
+            f"<div class='ufc-vs'>VS</div>"
+            f"<div class='ufc-fighter right'>"
+                f"{photo_block_b}"
+                f"<div class='info'>"
+                    f"{rank_b}"
+                    f"<div class='name {winner_b}'>{name_b}{check_b}</div>"
+                    f"<div class='country'>{flag_b} {b.get('country','')}</div>"
+                f"</div>"
+            f"</div>"
+        f"</div>"
+        f"{odds_block}"
+        f"{status_block}"
+        f"</div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+    if allow_actions:
+        ac1, ac2 = st.columns(2)
+        if ac1.button(f"🔮 Предсказать", key=f"pred_{idx}", use_container_width=True):
+            st.session_state.preselect = {
+                "a": name_a, "b": name_b, "event": fight.get("event", ""),
+                "rounds": fight.get("rounds", 5 if fight.get("title_fight") else 3),
+                "title_fight": fight.get("title_fight", False),
+            }
+            st.session_state.page = "🔮 Predictor"
+            st.rerun()
+        if ac2.button(f"👁️ В Watchlist", key=f"watch_{idx}", use_container_width=True):
+            entry = {"a": name_a, "b": name_b,
+                     "event": fight.get("event", ""),
+                     "rounds": fight.get("rounds", 3),
+                     "title_fight": fight.get("title_fight", False)}
+            if entry not in st.session_state.watchlist:
+                st.session_state.watchlist.append(entry)
+                st.toast(f"Добавлено: {name_a} vs {name_b}")
+                st.rerun()
+
+
+def render_ufc_card_header(title: str, date_str: str, venue: str, status: str = ""):
+    html = (
+        f"<div class='ufc-card-header'>"
+        f"<h2 class='title'>{title}</h2>"
+        f"<div class='meta'>{date_str}<br>{venue}<br>{status}</div>"
+        f"</div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def local_event_to_fights(ev: dict) -> list:
+    """Конвертим локальный event в формат для render_ufc_bout (без фото)."""
+    out = []
+    for ft in ev.get("fights", []):
+        if isinstance(ft, dict) and "winner" in ft:
+            a_name, b_name = ft["a"], ft["b"]
+            winner = ft.get("winner")
+            out.append({
+                "weight_class": ev.get("division", "Bout"),
+                "a": _local_fighter_block(a_name, winner == a_name),
+                "b": _local_fighter_block(b_name, winner == b_name),
+                "odds_a": None, "odds_b": None,
+                "status": ft.get("method", "FINAL"),
+                "completed": True,
+                "event": ev["title"],
+                "title_fight": ev.get("title_fight", False),
+                "rounds": 5 if ev.get("title_fight") else 3,
+            })
+        else:
+            a_name, b_name = (ft[0], ft[1]) if isinstance(ft, (list, tuple)) \
+                else (ft.get("a"), ft.get("b"))
+            out.append({
+                "weight_class": ev.get("division", "Bout"),
+                "a": _local_fighter_block(a_name),
+                "b": _local_fighter_block(b_name),
+                "odds_a": None, "odds_b": None,
+                "status": "",
+                "completed": False,
+                "event": ev["title"],
+                "title_fight": ev.get("title_fight", False),
+                "rounds": 5 if ev.get("title_fight") else 3,
+            })
+    return out
+
+
+def _local_fighter_block(name: str, winner: bool = False) -> dict:
+    f = get_fighter(name) or {}
+    return {
+        "name": name, "country": f.get("country", ""),
+        "flag_url": None, "photo": None, "rank": None, "winner": winner,
+    }
 
 
 # =================================================================
@@ -391,7 +1117,10 @@ def render_event_card(ev, idx, allow_click=True):
     elif allow_click:
         cols = st.columns(len(ev["fights"]))
         for i, ft in enumerate(ev["fights"]):
-            a, b = (ft if isinstance(ft, tuple) else (ft.get("a"), ft.get("b")))
+            if isinstance(ft, (list, tuple)):
+                a, b = ft[0], ft[1]
+            else:
+                a, b = ft.get("a"), ft.get("b")
             if cols[i].button(f"➡️ {a} vs {b}",
                               key=f"ev_{idx}_{i}", use_container_width=True):
                 st.session_state.preselect = {
@@ -405,29 +1134,331 @@ def render_event_card(ev, idx, allow_click=True):
 
 
 # =================================================================
+# Event Predictor (LLM helper для одного боя)
+# =================================================================
+def predict_single_fight(fight: dict, event_title: str, model: str,
+                          api_key: str, base_url: str,
+                          use_rag: bool = True) -> str:
+    """LLM-прогноз одного боя с разделами Прогноз / Ставка / Риски."""
+    a = fight.get("a", {})
+    b = fight.get("b", {})
+    name_a = a.get("name", "Fighter A")
+    name_b = b.get("name", "Fighter B")
+    wc = fight.get("weight_class", "")
+    odds_a = fight.get("odds_a") or "—"
+    odds_b = fight.get("odds_b") or "—"
+
+    # Если есть в локальной базе — добавим стату
+    fa = get_fighter(name_a) or {}
+    fb = get_fighter(name_b) or {}
+
+    # RAG retrieval
+    rag_block = ""
+    if use_rag:
+        try:
+            from rag_utils import retrieve_relevant_context
+            r = retrieve_relevant_context(
+                query=f"{name_a} vs {name_b} {wc} matchup prediction",
+                fighter_a=name_a, fighter_b=name_b, top_k=5,
+            )
+            if r.get("context_text"):
+                rag_block = (
+                    "\n\n=== KNOWLEDGE BASE (real data, ground your analysis here) ===\n"
+                    + r["context_text"]
+                    + "\n=== END KB ===\n"
+                )
+        except Exception:
+            pass
+
+    def _stat_block(name, f):
+        if not f:
+            return f"{name}: данных в локальной базе нет — используй общие знания о бойце."
+        return (
+            f"{name} ({f.get('country','')}, {f.get('age','?')} лет, {f.get('record','?')}): "
+            f"SLpM {f.get('SLpM','?')}, SApM {f.get('SApM','?')}, "
+            f"StrAcc {f.get('StrAcc','?')}%, StrDef {f.get('StrDef','?')}%, "
+            f"TDAvg {f.get('TDAvg','?')}, TDDef {f.get('TDDef','?')}%, "
+            f"SubAvg {f.get('SubAvg','?')}. Стиль: {f.get('style','?')}. "
+            f"Сильные: {', '.join(f.get('strengths',[]))}. "
+            f"Слабые: {', '.join(f.get('weaknesses',[]))}."
+        )
+
+    user_msg = f"""Дай прогноз на бой UFC.
+
+ИВЕНТ: {event_title}
+ВЕСОВАЯ: {wc}
+БОЙ: {name_a} vs {name_b}
+ODDS: {name_a} {odds_a} / {name_b} {odds_b}
+
+ДАННЫЕ:
+{_stat_block(name_a, fa)}
+{_stat_block(name_b, fb)}
+{rag_block}
+
+ФОРМАТ ОТВЕТА (строго в этом виде, используй markdown):
+
+### 🎯 ПРОГНОЗ
+Победитель: **[Имя]** — XX% уверенности.
+Метод: KO/TKO XX% · Submission XX% · Decision XX%.
+Раунд (если финиш): R[1-5].
+
+### 📊 АНАЛИТИКА
+2-3 коротких абзаца. Стилевой матч-ап, ключевые статы (с цифрами), форма, размер/reach, кардио, менталка. Используй MMA-сленг.
+
+### 💰 ЛУЧШАЯ СТАВКА
+Конкретно: что брать (Moneyline / Method / Round / Total). Где value/edge. 1-2 строки.
+
+### ⚠️ РИСКИ
+Жёстко перечисли 2-4 причины почему ставка может не зайти. Не разводи воду — конкретные сценарии (нокаут со встречки, sub в партере, размер фаворита просядет на дистанции и т.д.).
+
+Будь острым и уверенным."""
+
+    if not api_key:
+        return "❌ Установи API Key в сайдбаре."
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                      {"role": "user", "content": user_msg}],
+            temperature=0.5, max_tokens=1500,
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        return f"❌ Ошибка LLM: {e}"
+
+
+# =================================================================
+# Event Predictor режим — перехватывает routing если установлен
+# =================================================================
+if st.session_state.get("event_to_predict"):
+    ev = st.session_state.event_to_predict
+
+    top_l, top_r = st.columns([5, 1])
+    with top_l:
+        st.markdown(f"## 🎯 Event Predictor")
+    with top_r:
+        if st.button("← Назад", use_container_width=True):
+            st.session_state.event_to_predict = None
+            st.session_state.pop("event_predictions", None)
+            st.rerun()
+
+    render_ufc_card_header(
+        ev["title"], ev["date"], ev.get("venue", ""),
+        f"{len(ev['fights'])} BOUTS · AI ПРОГНОЗ")
+
+    fights = ev["fights"]
+    st.markdown(
+        f"<p style='color:{MUTED};margin-top:14px'>"
+        f"Открой каждый бой — внутри готовый прогноз, лучшая ставка и риски."
+        f"</p>", unsafe_allow_html=True)
+
+    # Кэш прогнозов в session_state
+    if "event_predictions" not in st.session_state:
+        st.session_state.event_predictions = {}
+
+    if st.button("⚡ Сгенерировать прогнозы для всех боёв",
+                 use_container_width=True):
+        if not api_key:
+            st.error("Сначала введи API Key в сайдбаре.")
+        else:
+            progress = st.progress(0)
+            for fi, fight in enumerate(fights):
+                key = f"{ev['title']}::{fight['a'].get('name','?')}::{fight['b'].get('name','?')}"
+                if key not in st.session_state.event_predictions:
+                    with st.spinner(f"Анализирую {fight['a'].get('name')} vs {fight['b'].get('name')}..."):
+                        st.session_state.event_predictions[key] = predict_single_fight(
+                            fight, ev["title"], model, api_key, base_url)
+                progress.progress((fi + 1) / len(fights))
+            st.success("Готово!")
+            st.rerun()
+
+    st.markdown("---")
+
+    for fi, fight in enumerate(fights):
+        a_name = fight["a"].get("name", "TBD")
+        b_name = fight["b"].get("name", "TBD")
+        wc = fight.get("weight_class", "Bout")
+        key = f"{ev['title']}::{a_name}::{b_name}"
+        cached = st.session_state.event_predictions.get(key)
+        title = f"#{fi+1}  {wc.upper()}  ·  {a_name}  VS  {b_name}"
+
+        with st.expander(title, expanded=False):
+            render_ufc_bout(fight, f"evp_{fi}", allow_actions=False, hide_photos=False)
+
+            cb1, cb2 = st.columns([1, 1])
+            if cb1.button("🔮 Сгенерировать прогноз", key=f"gen_{fi}",
+                          use_container_width=True):
+                if not api_key:
+                    st.error("Введи API Key в сайдбаре.")
+                else:
+                    with st.spinner("Анализ..."):
+                        st.session_state.event_predictions[key] = predict_single_fight(
+                            fight, ev["title"], model, api_key, base_url)
+                    st.rerun()
+            if cached and cb2.button("🔄 Перегенерировать", key=f"regen_{fi}",
+                                     use_container_width=True):
+                with st.spinner("Анализ..."):
+                    st.session_state.event_predictions[key] = predict_single_fight(
+                        fight, ev["title"], model, api_key, base_url)
+                st.rerun()
+
+            if cached:
+                st.markdown("---")
+                st.markdown(cached)
+                if st.button("💾 Сохранить в History", key=f"savehist_{fi}",
+                             use_container_width=True):
+                    st.session_state.history.insert(0, {
+                        "id": str(int(datetime.now().timestamp())),
+                        "fighter_a": a_name, "fighter_b": b_name,
+                        "event": ev["title"], "weight_class": wc,
+                        "rounds": 5 if "main" in title.lower() or "title" in wc.lower() else 3,
+                        "title_fight": False,
+                        "analysis": cached, "model": model,
+                        "timestamp": datetime.now().isoformat(),
+                        "main_bet": extract_main_bet(cached),
+                        "predicted_winner": extract_predicted_winner(cached),
+                        "status": "pending",
+                        "odds": None, "stake": None,
+                    })
+                    persist_history()
+                    st.success("Сохранено в History.")
+            else:
+                st.info("Прогноз ещё не сгенерирован. Кликни 🔮 чтобы запустить ИИ.")
+
+    st.stop()  # не рендерим остальные страницы
+
+
+# =================================================================
 # PAGE: HOME
 # =================================================================
 if page == "🏠 Home":
     stats = history_stats()
-    today = date.today().isoformat()
+    from datetime import timedelta
+    today = date.today()
 
-    upcoming = sorted([e for e in st.session_state.events if e.get("status") != "past"],
-                      key=lambda e: e["date"])
-    past = sorted([e for e in st.session_state.events if e.get("status") == "past"],
-                  key=lambda e: e["date"], reverse=True)
+    # ---------- REAL-TIME ESPN ----------
+    # Берём диапазон: последние 60 дней + следующие 120 дней
+    start_str = (today - timedelta(days=60)).strftime("%Y%m%d")
+    end_str = (today + timedelta(days=120)).strftime("%Y%m%d")
 
-    # Top metrics
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("🥋 Бойцов", len(st.session_state.fighters))
-    m2.metric("📅 Ближайших", len(upcoming))
-    m3.metric("📜 Прошедших", len(past))
-    if stats["accuracy"] is not None:
-        m4.metric("🎯 Точность ИИ",
-                  f"{stats['accuracy']:.0f}%",
-                  f"{stats['won']}W / {stats['lost']}L")
-    else:
-        m4.metric("🎯 Точность ИИ", "—", "нет данных")
-    m5.metric("⏳ Pending", stats["pending"])
+    live_error = None
+    espn_events = []
+    try:
+        from live_data import get_events_range
+        with st.spinner("📡 Загружаю real-time данные с ESPN..."):
+            espn_events = get_events_range(start_str, end_str)
+    except Exception as e:
+        live_error = str(e)
+
+    # Авто-классификация past/upcoming
+    def _is_past(ev):
+        # Если хоть один бой completed — считаем event прошедшим
+        if any(f.get("completed") for f in ev.get("fights", [])):
+            return True
+        try:
+            evd = datetime.fromisoformat(ev["date"].replace("Z", "+00:00")).date()
+            return evd < today
+        except Exception:
+            return False
+
+    upcoming_live = sorted(
+        [e for e in espn_events if not _is_past(e)],
+        key=lambda e: e["date"])
+    past_live = sorted(
+        [e for e in espn_events if _is_past(e)],
+        key=lambda e: e["date"], reverse=True)
+
+    # Локальная база как фолбэк
+    upcoming_local = sorted(
+        [e for e in st.session_state.events if e.get("status") != "past"],
+        key=lambda e: e["date"])
+    past_local = sorted(
+        [e for e in st.session_state.events if e.get("status") == "past"],
+        key=lambda e: e["date"], reverse=True)
+
+    use_live = bool(espn_events) and not live_error
+    upcoming = upcoming_live if use_live else upcoming_local
+    past = past_live if use_live else past_local
+
+    # ---------- АВТО-РЕЗОЛВ ПРОГНОЗОВ ----------
+    auto_resolved = 0
+    if use_live:
+        auto_resolved = auto_resolve_predictions(espn_events)
+        if auto_resolved > 0:
+            stats = history_stats()  # пересчёт после резолва
+
+    # ---------- ПРОДАЮЩИЙ HERO STATS BLOCK ----------
+    total_predicted = len(st.session_state.history)
+    won = stats["won"]
+    lost = stats["lost"]
+    pending = stats["pending"]
+    accuracy = stats["accuracy"]
+    next_event = upcoming[0] if upcoming else None
+
+    # Countdown до ближайшего ивента
+    countdown_str = "—"
+    next_title = "—"
+    if next_event:
+        try:
+            if "fights" in next_event and isinstance(next_event["fights"][0].get("a"), dict):
+                next_title = next_event.get("name", "UFC")
+                ev_dt = datetime.fromisoformat(next_event["date"].replace("Z", "+00:00"))
+            else:
+                next_title = next_event.get("title", "UFC")
+                ev_dt = datetime.fromisoformat(next_event["date"])
+            delta = ev_dt.replace(tzinfo=None) - datetime.now()
+            days = delta.days
+            hours = delta.seconds // 3600
+            if days > 0:
+                countdown_str = f"{days}д {hours}ч"
+            elif hours > 0:
+                countdown_str = f"{hours}ч"
+            else:
+                countdown_str = "СКОРО"
+        except Exception:
+            countdown_str = ""
+
+    acc_str = f"{accuracy:.0f}%" if accuracy is not None else "—"
+    acc_caption = f"{won}W · {lost}L" if accuracy is not None else "нет данных"
+
+    st.markdown(
+        f"""
+<div class='hero-stats'>
+    <div class='hs-card hs-primary'>
+        <div class='hs-label'>🎯 ТОЧНОСТЬ ИИ</div>
+        <div class='hs-value'>{acc_str}</div>
+        <div class='hs-sub'>{acc_caption}</div>
+    </div>
+    <div class='hs-card hs-won'>
+        <div class='hs-label'>🟢 ЗАШЛО</div>
+        <div class='hs-value'>{won}</div>
+        <div class='hs-sub'>прогнозов в плюс</div>
+    </div>
+    <div class='hs-card hs-lost'>
+        <div class='hs-label'>🔴 НЕ ЗАШЛО</div>
+        <div class='hs-value'>{lost}</div>
+        <div class='hs-sub'>в минус</div>
+    </div>
+    <div class='hs-card hs-pending'>
+        <div class='hs-label'>⏳ ОЖИДАЮТ</div>
+        <div class='hs-value'>{pending}</div>
+        <div class='hs-sub'>боёв впереди</div>
+    </div>
+    <div class='hs-card hs-event'>
+        <div class='hs-label'>📅 СЛЕДУЮЩИЙ ИВЕНТ</div>
+        <div class='hs-value' style='font-size:1.4rem;line-height:1.1'>{countdown_str}</div>
+        <div class='hs-sub' style='font-size:0.7rem;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>{next_title[:40]}</div>
+    </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    if auto_resolved > 0:
+        st.success(f"✅ Авто-резолв: {auto_resolved} прогнозов обновлено по итогам ESPN.")
 
     st.markdown("---")
 
@@ -435,19 +1466,69 @@ if page == "🏠 Home":
     left, right = st.columns([2, 1])
 
     with left:
+        if live_error:
+            st.warning(f"⚠️ ESPN недоступен ({live_error[:80]}). Показываю локальную базу.")
+        elif use_live:
+            st.success("📡 Real-time данные с ESPN · Auto-refresh 5 мин")
+
+        def _render_event_block(ev, idx_prefix, allow_actions):
+            """Render одного event-а из live или local формата (без фото на Home)."""
+            is_espn = ("fights" in ev and ev["fights"]
+                       and isinstance(ev["fights"][0], dict)
+                       and "a" in ev["fights"][0]
+                       and isinstance(ev["fights"][0]["a"], dict))
+            if is_espn:
+                try:
+                    dt = datetime.fromisoformat(ev["date"].replace("Z", "+00:00"))
+                    date_str = dt.strftime("%a, %b %d, %Y")
+                except Exception:
+                    date_str = ev.get("date", "")
+                event_title = ev.get("name", "UFC")
+                event_meta = ev.get("venue", "")
+                fights = ev["fights"]
+                tag = "FINAL" if any(f.get("completed") for f in fights) else f"{len(fights)} BOUTS"
+            else:
+                date_str = ev["date"]
+                event_title = ev["title"]
+                event_meta = ev["location"]
+                fights = local_event_to_fights(ev)
+                tag = ("FINAL" if ev.get("status") == "past"
+                       else ("TITLE FIGHT" if ev.get("title_fight") else ""))
+
+            render_ufc_card_header(event_title, date_str, event_meta, tag)
+
+            # Кнопка "Предсказать весь кард" — только для предстоящих
+            if allow_actions:
+                if st.button(f"🔮 Предсказать весь кард",
+                             key=f"predcard_{idx_prefix}",
+                             use_container_width=True):
+                    st.session_state.event_to_predict = {
+                        "title": event_title,
+                        "date": date_str,
+                        "venue": event_meta,
+                        "fights": fights,
+                    }
+                    st.rerun()
+
+            for fi, fight in enumerate(fights):
+                fight["event"] = event_title
+                render_ufc_bout(fight, f"{idx_prefix}_{fi}",
+                                allow_actions=allow_actions, hide_photos=True)
+
         st.markdown("### 🔥 Ближайшие события")
-        st.caption("Кликни на бой — он подгрузится в Predictor")
+        st.caption("UFC.com-style карточки. Кликни 🔮 чтобы предсказать")
         if not upcoming:
             st.info("Нет ближайших событий.")
-        for i, ev in enumerate(upcoming):
-            render_event_card(ev, f"up_{i}")
+        for ei, ev in enumerate(upcoming):
+            _render_event_block(ev, f"home_up_{ei}", allow_actions=True)
 
         st.markdown("---")
         st.markdown("### 📜 Прошедшие события")
+        st.caption("Победитель отмечен зелёной галочкой ✓ + метод финиша")
         if not past:
-            st.info("Нет прошедших событий в базе.")
-        for i, ev in enumerate(past):
-            render_event_card(ev, f"past_{i}", allow_click=False)
+            st.info("Нет прошедших событий.")
+        for ei, ev in enumerate(past):
+            _render_event_block(ev, f"home_past_{ei}", allow_actions=False)
 
     with right:
         st.markdown("### 📈 Анализ истории")
@@ -481,7 +1562,7 @@ if page == "🏠 Home":
                 marker=dict(colors=["#2ecc71", "#e74c3c"]),
                 hole=0.5,
             )])
-            pie.update_layout(paper_bgcolor=BG, font=dict(color="white"),
+            pie.update_layout(paper_bgcolor=BG, font=dict(color=TEXT),
                               height=240, margin=dict(t=10, b=10, l=10, r=10),
                               showlegend=True)
             st.plotly_chart(pie, use_container_width=True)
@@ -508,6 +1589,43 @@ if page == "🏠 Home":
             "После боя отметь — зашла ставка или нет. ИИ накапливает реальную "
             "статистику точности, а ты видишь свой ROI и win rate."
         )
+
+
+# =================================================================
+# PAGE: LIVE CARD (real-time ESPN)
+# =================================================================
+elif page == "🔴 Live Card":
+    st.markdown("## 🔴 Live Card — Real-time данные ESPN")
+    st.caption("Реальные данные с публичного ESPN API: фото, флаги, odds, статус. "
+               "Кэш 5 минут. Источник: site.api.espn.com")
+
+    rc1, rc2 = st.columns([1, 5])
+    if rc1.button("🔄 Обновить"):
+        st.cache_data.clear()
+        st.rerun()
+
+    try:
+        live_events = get_live_events()
+    except Exception as e:
+        st.error(f"❌ Не удалось получить данные с ESPN: {e}")
+        st.info("Проверь интернет-соединение. Локальная база на главной работает офлайн.")
+        live_events = []
+
+    if not live_events:
+        st.warning("ESPN не вернул событий. Возможно, между ивентами.")
+    for ei, ev in enumerate(live_events):
+        # формат даты
+        try:
+            dt = datetime.fromisoformat(ev["date"].replace("Z", "+00:00"))
+            date_str = dt.strftime("%a, %b %d, %Y · %H:%M UTC")
+        except Exception:
+            date_str = ev.get("date", "")
+        render_ufc_card_header(
+            ev["name"], date_str, ev.get("venue", ""),
+            f"{len(ev['fights'])} BOUTS")
+        for fi, fight in enumerate(ev["fights"]):
+            fight["event"] = ev["name"]
+            render_ufc_bout(fight, f"live_{ei}_{fi}")
 
 
 # =================================================================
@@ -736,6 +1854,15 @@ elif page == "🔮 Predictor":
     intel = st.text_area("intel", height=140, label_visibility="collapsed",
         placeholder="Травмы, весогонка, драма в лагере, мотивация...")
 
+    st.markdown("### 📚 RAG Knowledge Base")
+    rag_c1, rag_c2 = st.columns([3, 1])
+    use_rag = rag_c1.toggle(
+        "Использовать Knowledge Base (исторические бои + профили)",
+        value=True,
+        help="Подмешивает в промпт релевантные документы из ChromaDB.",
+    )
+    rag_top_k = rag_c2.slider("Top-K", 3, 10, 6, label_visibility="collapsed")
+
     st.markdown("---")
     if st.button("🔥 ЗАПУСТИТЬ ГЛУБОКИЙ АНАЛИЗ И ПРОГНОЗ", use_container_width=True):
         if not fa or not fb:
@@ -745,20 +1872,60 @@ elif page == "🔮 Predictor":
         else:
             ctx = {"rounds": rounds, "title_fight": title_fight,
                    "division": fa.get("division", "—"), "event": event_name}
+
+            # ---------- RAG retrieval ----------
+            rag_result = {"context_text": "", "sources": [], "raw": []}
+            if use_rag:
+                try:
+                    from rag_utils import retrieve_relevant_context
+                    with st.spinner("🧠 Ретриверю knowledge base..."):
+                        query = (
+                            f"{fa['name']} vs {fb['name']} stylistic matchup "
+                            f"{fa.get('style', '')} {fb.get('style', '')} "
+                            f"{ctx['division']} weight class fight prediction"
+                        )
+                        rag_result = retrieve_relevant_context(
+                            query=query,
+                            fighter_a=fa["name"], fighter_b=fb["name"],
+                            top_k=rag_top_k,
+                        )
+                    if rag_result.get("error"):
+                        st.warning(f"RAG warning: {rag_result['error']}")
+                except Exception as e:
+                    st.warning(f"RAG недоступен: {e}")
+                    rag_result = {"context_text": "", "sources": [], "raw": []}
+
+            # Подмешиваем RAG-контекст в intel
+            enriched_intel = intel
+            if rag_result.get("context_text"):
+                enriched_intel = (
+                    f"{intel}\n\n"
+                    f"=== RETRIEVED KNOWLEDGE BASE CONTEXT ===\n"
+                    f"Use the following real data and historical fights to ground your analysis. "
+                    f"When making stylistic or probabilistic claims, cite relevant past fights "
+                    f"in [Source N] format.\n\n"
+                    f"{rag_result['context_text']}\n"
+                    f"=== END KB CONTEXT ===\n"
+                )
+
             with st.spinner("⏳ Анализируем стили, статистику, форму, менталку..."):
                 try:
                     if demo_mode or not api_key:
-                        analysis = demo_analysis(fa, fb, ctx, intel)
+                        analysis = demo_analysis(fa, fb, ctx, enriched_intel)
                         if not demo_mode and not api_key:
                             st.warning("API key пустой — показываю demo.")
                     else:
-                        analysis = get_fight_prediction(fa, fb, ctx, intel,
+                        analysis = get_fight_prediction(fa, fb, ctx, enriched_intel,
                                                        api_key, base_url, model)
                     st.session_state.last_analysis = {
                         "fa": fa["name"], "fb": fb["name"],
                         "ctx": ctx, "intel": intel, "analysis": analysis,
                         "ts": datetime.now().isoformat(timespec="seconds"),
                         "main_bet": extract_main_bet(analysis),
+                        "predicted_winner": extract_predicted_winner(analysis),
+                        "rag_sources": rag_result.get("sources", []),
+                        "rag_raw": rag_result.get("raw", []),
+                        "rag_used": use_rag,
                         "status": "pending",
                     }
                 except Exception as e:
@@ -783,8 +1950,8 @@ elif page == "🔮 Predictor":
         fig.add_trace(go.Scatterpolar(r=rv(fb), theta=cats, fill="toself",
             name=fb["name"], line=dict(color=UFC_GOLD)))
         fig.update_layout(polar=dict(bgcolor=BG,
-            radialaxis=dict(visible=True, range=[0, 100], color="#888")),
-            paper_bgcolor=BG, font=dict(color="white"), height=420,
+            radialaxis=dict(visible=True, range=[0, 100], color=MUTED)),
+            paper_bgcolor=BG, font=dict(color=TEXT), height=420,
             margin=dict(t=20, b=20))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -795,13 +1962,39 @@ elif page == "🔮 Predictor":
             "Боец": [fa["name"]] * len(metrics) + [fb["name"]] * len(metrics),
         })
         bfig = px.bar(bar_df, x="Метрика", y="Значение", color="Боец", barmode="group",
-                      color_discrete_map={fa["name"]: UFC_RED, fb["name"]: UFC_GOLD})
+                      color_discrete_map={fa["name"]: UFC_RED, fb["name"]: "#000000"})
         bfig.update_layout(paper_bgcolor=BG, plot_bgcolor=BG,
-                          font=dict(color="white"), height=380, margin=dict(t=10))
+                          font=dict(color=TEXT), height=380, margin=dict(t=10))
         st.plotly_chart(bfig, use_container_width=True)
 
         st.markdown("---")
         st.markdown("## 🎯 Прогноз ИИ")
+
+        # RAG transparency: что именно ИИ использовал из базы
+        if la.get("rag_used") and la.get("rag_raw"):
+            with st.expander(
+                f"📚 Retrieved Knowledge Base Context "
+                f"({len(la['rag_raw'])} документов)",
+                expanded=False,
+            ):
+                st.caption(
+                    "ИИ опирался на эти документы из ChromaDB. "
+                    "Это grounding-контекст — реальные данные, а не галлюцинации."
+                )
+                for i, item in enumerate(la["rag_raw"], 1):
+                    m = item["meta"]
+                    score = item["score"]
+                    if m.get("doc_type") == "fighter_profile":
+                        title = f"[{i}] 🥋 {m.get('fighter_name')} · score: {score:.3f}"
+                    else:
+                        title = (
+                            f"[{i}] 📜 {m.get('fighter_a')} vs "
+                            f"{m.get('fighter_b')} · {m.get('date', '')} · "
+                            f"score: {score:.3f}"
+                        )
+                    st.markdown(f"**{title}**")
+                    st.code(item["doc"], language=None)
+
         st.markdown(la["analysis"])
 
         sc1, sc2 = st.columns(2)
@@ -812,6 +2005,23 @@ elif page == "🔮 Predictor":
         sc2.download_button("⬇️ Скачать (markdown)",
             data=la["analysis"], file_name=f"prediction_{la['fa']}_vs_{la['fb']}.md",
             mime="text/markdown", use_container_width=True)
+
+
+# =================================================================
+# PAGE: KNOWLEDGE BASE (RAG)
+# =================================================================
+elif page == "🧠 Knowledge Base":
+    try:
+        from rag_ui import render_knowledge_base_page
+        render_knowledge_base_page()
+    except ImportError as e:
+        st.error(
+            f"❌ RAG модули не установлены: `{e}`. "
+            f"Запусти: `pip install -r requirements.txt`"
+        )
+    except Exception as e:
+        st.error(f"❌ Ошибка Knowledge Base: {e}")
+        st.exception(e)
 
 
 # =================================================================
@@ -838,8 +2048,8 @@ elif page == "📊 Analytics":
         radar.add_trace(go.Scatterpolar(r=rv2(b), theta=cats, fill="toself",
             name=b["name"], line=dict(color=UFC_GOLD)))
         radar.update_layout(polar=dict(bgcolor=BG,
-            radialaxis=dict(visible=True, range=[0, 100], color="#888")),
-            paper_bgcolor=BG, font=dict(color="white"), height=400)
+            radialaxis=dict(visible=True, range=[0, 100], color=MUTED)),
+            paper_bgcolor=BG, font=dict(color=TEXT), height=400)
         st.plotly_chart(radar, use_container_width=True)
 
         rows = []
