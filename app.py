@@ -843,6 +843,7 @@ with st.sidebar:
         "👥 Fight Base",
         "🔮 Predictor",
         "🧠 Knowledge Base",
+        "🧮 ML Model",
         "🎓 Fine-Tuning",
         "📊 Analytics",
         "⚖️ Weight Cut",
@@ -2021,6 +2022,30 @@ elif page == "🔮 Predictor":
             if synth_m: agent_models["synthesizer"] = synth_m
         agent_models["default"] = model
 
+    # ---------- Hybrid ML+LLM Mode ----------
+    st.markdown("### 🧮 Hybrid ML + LLM")
+    try:
+        import ml_model
+        ml_meta = ml_model.get_meta()
+        ml_trained = ml_meta is not None and "load_error" not in ml_meta
+    except ImportError:
+        ml_model, ml_meta, ml_trained = None, None, False
+
+    h_c1, h_c2 = st.columns([3, 1])
+    use_hybrid = h_c1.toggle(
+        "Использовать Hybrid (ML probability + LLM analysis)",
+        value=ml_trained,
+        disabled=not ml_trained,
+        help=("Объединяет XGBoost-вероятность с LLM-аналитикой для лучшей калибровки. "
+              "Натренируй модель на странице 🧮 ML Model." if not ml_trained else
+              "ML-модель даёт base probability, LLM добавляет qualitative reasoning."),
+    )
+    ml_weight = h_c2.slider("ML weight", 0.0, 1.0, 0.4, 0.05,
+        disabled=not (use_hybrid and ml_trained),
+        help="Какой вес дать ML-модели. Остальное — LLM.")
+    if not ml_trained:
+        st.caption("⚠️ ML-модель не натренирована. Перейди на **🧮 ML Model** → Train.")
+
     st.markdown("---")
     if st.button("🔥 ЗАПУСТИТЬ ГЛУБОКИЙ АНАЛИЗ И ПРОГНОЗ", use_container_width=True):
         if not fa or not fb:
@@ -2094,6 +2119,40 @@ elif page == "🔮 Predictor":
                         analysis = get_fight_prediction(fa, fb, ctx, enriched_intel,
                                                        api_key, base_url, model)
                     probs = extract_probabilities(analysis)
+
+                    # ----- ML prediction (всегда, если модель есть) -----
+                    ml_pred = {"available": False}
+                    hybrid_info = None
+                    if ml_model is not None:
+                        try:
+                            ml_pred = ml_model.predict_ml(fa, fb)
+                        except Exception as e:
+                            ml_pred = {"available": False, "reason": f"err: {e}"}
+
+                    # ----- LLM prob для бойца A (для гибрида) -----
+                    # probs['win_prob'] — для предсказанного победителя.
+                    # Конвертируем в prob_a:
+                    llm_prob_a = None
+                    pw = extract_predicted_winner(analysis)
+                    if probs["win_prob"] is not None and pw:
+                        if _name_match(pw, fa["name"]):
+                            llm_prob_a = probs["win_prob"]
+                        elif _name_match(pw, fb["name"]):
+                            llm_prob_a = 1.0 - probs["win_prob"]
+
+                    # ----- Hybrid combine -----
+                    if use_hybrid and ml_pred.get("available") and llm_prob_a is not None:
+                        hybrid_info = ml_model.combine_hybrid(
+                            ml_pred, llm_prob_a, ml_weight=ml_weight)
+                        # Перезаписываем win_prob в probs гибридной вероятностью
+                        # (для предсказанного победителя), чтобы Brier Score
+                        # считался по финальной hybrid prob.
+                        final_a = hybrid_info["final_prob_a"]
+                        if pw and _name_match(pw, fa["name"]):
+                            probs["win_prob"] = final_a
+                        elif pw and _name_match(pw, fb["name"]):
+                            probs["win_prob"] = 1.0 - final_a
+
                     record = {
                         "fa": fa["name"], "fb": fb["name"],
                         "fighter_a": fa["name"], "fighter_b": fb["name"],
@@ -2116,6 +2175,10 @@ elif page == "🔮 Predictor":
                         "multi_agent_used": use_multi_agent,
                         "agent_outputs": agent_outputs,
                         "agent_timings": agent_timings,
+                        "ml_pred": ml_pred,
+                        "hybrid": hybrid_info,
+                        "hybrid_used": use_hybrid and hybrid_info is not None,
+                        "ml_weight_setting": ml_weight if use_hybrid else None,
                         "status": "pending",
                     }
                     st.session_state.last_analysis = record
@@ -2177,6 +2240,60 @@ elif page == "🔮 Predictor":
 
         st.markdown("---")
         st.markdown("## 🎯 Прогноз ИИ")
+
+        # Hybrid ML + LLM сравнение
+        if la.get("ml_pred", {}).get("available") or la.get("hybrid_used"):
+            ml_p = la.get("ml_pred", {})
+            hyb = la.get("hybrid") or {}
+            fa_name = la.get("fa", "A")
+            fb_name = la.get("fb", "B")
+
+            st.markdown("### 🧮 Hybrid Breakdown")
+            hc1, hc2, hc3 = st.columns(3)
+
+            ml_a = ml_p.get("win_prob_a")
+            with hc1:
+                st.markdown("**🧮 ML Model**")
+                if ml_a is not None:
+                    fav_name = fa_name if ml_a >= 0.5 else fb_name
+                    fav_p = ml_a if ml_a >= 0.5 else 1 - ml_a
+                    st.metric(fav_name, f"{fav_p*100:.1f}%")
+                    st.caption(f"{fa_name}: {ml_a*100:.1f}% / {fb_name}: {(1-ml_a)*100:.1f}%")
+                else:
+                    st.caption("Модель не доступна")
+
+            llm_a = hyb.get("llm_prob_a") if hyb else None
+            with hc2:
+                st.markdown("**🤖 LLM Only**")
+                if llm_a is not None:
+                    fav_name = fa_name if llm_a >= 0.5 else fb_name
+                    fav_p = llm_a if llm_a >= 0.5 else 1 - llm_a
+                    st.metric(fav_name, f"{fav_p*100:.1f}%")
+                    st.caption(f"{fa_name}: {llm_a*100:.1f}% / {fb_name}: {(1-llm_a)*100:.1f}%")
+                else:
+                    st.caption("LLM-prob не извлечена")
+
+            final_a = hyb.get("final_prob_a") if hyb else None
+            with hc3:
+                st.markdown("**🎯 Hybrid (Final)**")
+                if final_a is not None:
+                    fav_name = fa_name if final_a >= 0.5 else fb_name
+                    fav_p = final_a if final_a >= 0.5 else 1 - final_a
+                    st.metric(fav_name, f"{fav_p*100:.1f}%",
+                              delta=f"weights ML {hyb['ml_weight']:.0%} / LLM {hyb['llm_weight']:.0%}")
+                    st.caption(f"{fa_name}: {final_a*100:.1f}% / {fb_name}: {(1-final_a)*100:.1f}%")
+                else:
+                    st.caption("Hybrid не активирован")
+
+            # ML method probs
+            if ml_p.get("method_probs"):
+                mp = ml_p["method_probs"]
+                with st.expander("🥋 ML method distribution"):
+                    mc1, mc2, mc3 = st.columns(3)
+                    mc1.metric("KO/TKO", f"{mp.get('KO/TKO',0)*100:.1f}%")
+                    mc2.metric("Submission", f"{mp.get('Submission',0)*100:.1f}%")
+                    mc3.metric("Decision", f"{mp.get('Decision',0)*100:.1f}%")
+            st.markdown("---")
 
         # Multi-Agent transparency: вывод каждого агента
         if la.get("multi_agent_used") and la.get("agent_outputs"):
@@ -2250,6 +2367,132 @@ elif page == "🧠 Knowledge Base":
     except Exception as e:
         st.error(f"❌ Ошибка Knowledge Base: {e}")
         st.exception(e)
+
+
+# =================================================================
+# PAGE: ML MODEL (Hybrid backbone)
+# =================================================================
+elif page == "🧮 ML Model":
+    st.markdown("## 🧮 Classical ML Model (XGBoost / GBM)")
+    st.caption(
+        "Табличная модель на разностях метрик бойцов. Используется как base-prob "
+        "в Hybrid режиме предиктора. Пере-тренируй после каждого ивента — "
+        "она автоматически подтянет новые resolved предсказания."
+    )
+
+    try:
+        import ml_model
+    except ImportError:
+        st.error("ml_model не импортируется. Проверь зависимости.")
+        st.stop()
+
+    if not ml_model.is_available():
+        st.error(
+            "❌ Нет ML-backend. Установи XGBoost (рекомендуется) или scikit-learn:\n\n"
+            "`pip install xgboost`  ← или  `pip install scikit-learn`"
+        )
+        st.stop()
+
+    # ---- Подготовка данных ----
+    try:
+        from rag_seed import HISTORICAL_FIGHTS
+    except ImportError:
+        HISTORICAL_FIGHTS = []
+
+    training = ml_model.assemble_training_data(
+        fighters_db=st.session_state.fighters,
+        historical_fights=HISTORICAL_FIGHTS,
+        resolved_history=st.session_state.history,
+    )
+
+    s1, s2, s3, s4 = st.columns(4)
+    s1.metric("Training samples", training["n_samples"])
+    s2.metric("Hist. fights skipped",
+              training["skipped"],
+              help="Бои где боец не найден в локальной БД.")
+    s3.metric("Backend", ml_model._BACKEND or "—")
+    meta_now = ml_model.get_meta()
+    s4.metric("Trained model", "✅ есть" if meta_now and "load_error" not in meta_now else "—")
+
+    st.markdown("### 🎯 Train / Retrain")
+    if st.button("🚀 Train ML Model", type="primary", use_container_width=True):
+        if training["n_samples"] < 6:
+            st.error(
+                f"Слишком мало данных: {training['n_samples']} строк. "
+                f"Нужно минимум 6. Добавь больше resolved предсказаний или "
+                f"расширь rag_seed.HISTORICAL_FIGHTS."
+            )
+        else:
+            with st.spinner("Тренируем..."):
+                try:
+                    meta = ml_model.train_models(training)
+                    st.success(
+                        f"✅ Модель обучена. Train accuracy: "
+                        f"{meta['winner_train_accuracy']*100:.1f}%"
+                    )
+                    st.session_state.ml_meta_refresh = datetime.now().isoformat()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Тренировка упала: {e}")
+                    st.exception(e)
+
+    # ---- Meta + feature importance ----
+    if meta_now and "load_error" not in meta_now:
+        st.markdown("### 📊 Model Meta")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Train accuracy (winner)",
+                  f"{meta_now['winner_train_accuracy']*100:.1f}%")
+        method_meta = meta_now.get("method", {})
+        m2.metric("Method model",
+                  f"{method_meta.get('train_acc', 0)*100:.1f}%" if method_meta.get("trained")
+                  else "—")
+        m3.metric("Samples", meta_now["n_samples"])
+
+        fi = meta_now.get("feature_importance", {})
+        if fi:
+            st.markdown("### 🏆 Feature Importance")
+            st.caption("Какие признаки модель считает решающими.")
+            fi_sorted = sorted(fi.items(), key=lambda x: x[1], reverse=True)
+            fi_df = pd.DataFrame(fi_sorted, columns=["Feature", "Importance"])
+            fig = px.bar(fi_df, x="Importance", y="Feature", orientation="h",
+                         color="Importance", color_continuous_scale="Reds")
+            fig.update_layout(paper_bgcolor=BG, plot_bgcolor=BG,
+                              font=dict(color=TEXT), height=480,
+                              yaxis={"categoryorder": "total ascending"},
+                              margin=dict(t=20))
+            st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🧬 Raw meta JSON"):
+            st.json(meta_now)
+    else:
+        st.info(
+            "Модель ещё не натренирована. Нажми **🚀 Train ML Model** выше "
+            "когда наберётся достаточно данных."
+        )
+
+    # ---- Feature preview ----
+    with st.expander("🔬 Preview features для пары бойцов"):
+        names = [f["name"] for f in st.session_state.fighters]
+        pa, pb = st.columns(2)
+        an = pa.selectbox("Fighter A", names, key="ml_prev_a")
+        bn = pb.selectbox("Fighter B", names, key="ml_prev_b",
+                          index=1 if len(names) > 1 else 0)
+        fa_p = next((f for f in st.session_state.fighters if f["name"] == an), None)
+        fb_p = next((f for f in st.session_state.fighters if f["name"] == bn), None)
+        if fa_p and fb_p:
+            feats = ml_model.build_features(fa_p, fb_p)
+            df = pd.DataFrame({
+                "Feature": ml_model.FEATURE_NAMES,
+                "A vs B value": feats,
+            })
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            if meta_now and "load_error" not in meta_now:
+                pred = ml_model.predict_ml(fa_p, fb_p)
+                if pred.get("available"):
+                    st.success(
+                        f"ML prediction: **{an}** {pred['win_prob_a']*100:.1f}% / "
+                        f"**{bn}** {pred['win_prob_b']*100:.1f}%"
+                    )
 
 
 # =================================================================
