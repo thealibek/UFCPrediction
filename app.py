@@ -843,6 +843,7 @@ with st.sidebar:
         "👥 Fight Base",
         "🔮 Predictor",
         "🧠 Knowledge Base",
+        "🎓 Fine-Tuning",
         "📊 Analytics",
         "⚖️ Weight Cut",
         "📚 History & Accuracy",
