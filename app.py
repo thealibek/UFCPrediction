@@ -985,7 +985,12 @@ def demo_analysis(fa, fb, ctx, intel):
 def get_fight_prediction(fa, fb, ctx, intel, api_key, base_url, model):
     from openai import OpenAI
     from lessons import relevant_lessons, format_lessons_block, build_context_string
+    from fighter_db import enrich_fighter
     client = OpenAI(api_key=api_key, base_url=base_url)
+
+    # --- Auto-enrich из fighters_db.json (UFCStats) ---
+    fa = enrich_fighter(fa)
+    fb = enrich_fighter(fb)
 
     # --- Инжект Lessons из персистентной памяти ошибок ---
     ctx_str = build_context_string(fa, fb, ctx, intel)
@@ -3713,8 +3718,9 @@ if page == "🎯 Blind Tests":
     import blind_test as bt
     from live_data import get_events_range, parse_event, fetch_espn_scoreboard
 
-    tab_new, tab_history, tab_compare = st.tabs(
-        ["🆕 New Blind Run", "📜 History & Grading", "🆚 Compare Runs"])
+    tab_new, tab_history, tab_compare, tab_agg = st.tabs(
+        ["🆕 New Blind Run", "📜 History & Grading", "🆚 Compare Runs",
+         "📊 2026 Aggregate"])
 
     # ---------- NEW RUN ----------
     with tab_new:
@@ -3906,13 +3912,16 @@ if page == "🎯 Blind Tests":
                         else:
                             st.markdown("_Не грейднут. Нажми Pull & grade._")
                     if rec.get("reasoning"):
-                        with st.expander("🧠 Reasoning"):
-                            st.markdown(rec["reasoning"])
+                        st.markdown("---")
+                        st.markdown("**🧠 Reasoning**")
+                        st.markdown(rec["reasoning"])
 
                     # ---- Извлечь урок из промаха ----
                     if graded and rec.get("correct") is False:
                         from lessons import add_lesson
-                        with st.expander("📝 Извлечь урок из этого промаха"):
+                        st.markdown("---")
+                        with st.container(border=True):
+                            st.markdown("**📝 Извлечь урок из этого промаха**")
                             lt = st.text_input(
                                 "Заголовок урока",
                                 key=f"lt_{rec['fighter_a']}_{rec['fighter_b']}",
@@ -4035,6 +4044,87 @@ if page == "🎯 Blind Tests":
                 st.dataframe(pd.DataFrame(comp_rows),
                              use_container_width=True, hide_index=True)
 
+    # ---------- AGGREGATE 2026 ----------
+    with tab_agg:
+        st.markdown("### 📊 Aggregate Accuracy — все blind-tests")
+        st.caption("Сводная статистика по всем graded blind-tests. "
+                   "Запусти `python3 _mass_blind_2026.py` чтобы пройтись по "
+                   "всем 2026-ивентам сразу.")
+
+        all_files = sorted(Path("blind_tests").glob("*.json"))
+        all_files = [p for p in all_files if not p.name.startswith("_")]
+
+        rows, total_n, total_g, total_correct, total_brier = [], 0, 0, 0, 0.0
+        miss_records = []
+        for p in all_files:
+            try:
+                d = json.loads(p.read_text())
+            except Exception: continue
+            s = d.get("summary") or {}
+            if not s.get("n_graded"): continue
+            n = s["n_graded"]
+            acc = s.get("accuracy_%", 0)
+            br = s.get("brier", 0)
+            total_n += s.get("n", 0)
+            total_g += n
+            total_correct += round(acc / 100 * n)
+            total_brier += br * n
+            rows.append({
+                "date": d["event"]["date"][:10],
+                "event": d["event"]["name"].split(" [")[0][:50],
+                "version": (d.get("model_meta") or {}).get("system_prompt_version","—"),
+                "graded": n, "acc_%": round(acc, 1), "brier": round(br, 3),
+                "file": p.name,
+            })
+            for rec in d.get("predictions", []):
+                if rec.get("graded") and not rec.get("correct"):
+                    miss_records.append({
+                        "date": d["event"]["date"][:10],
+                        "event": d["event"]["name"].split(" [")[0][:40],
+                        "fight": f"{rec['fighter_a']} vs {rec['fighter_b']}",
+                        "predicted": rec.get("predicted_winner"),
+                        "confidence": (rec.get("win_prob") or 0)*100,
+                        "actual": rec.get("actual_winner"),
+                    })
+
+        if total_g:
+            agg_acc = total_correct / total_g * 100
+            agg_br = total_brier / total_g
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("📊 Events", len(rows))
+            c2.metric("🥊 Fights graded", total_g)
+            c3.metric("🎯 Overall Accuracy", f"{agg_acc:.1f}%")
+            c4.metric("📉 Weighted Brier", f"{agg_br:.3f}")
+
+            st.markdown("---")
+            st.markdown("### 📋 Per-event breakdown")
+            df = pd.DataFrame(rows).sort_values("date", ascending=False)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # accuracy over time chart
+            df_chart = df.sort_values("date")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df_chart["date"], y=df_chart["acc_%"],
+                mode="lines+markers", name="Accuracy %",
+                line=dict(color=UFC_RED, width=2)))
+            fig.add_hline(y=agg_acc, line_dash="dash", line_color=UFC_GOLD,
+                          annotation_text=f"Avg {agg_acc:.1f}%")
+            fig.update_layout(paper_bgcolor=BG, plot_bgcolor=BG,
+                              font=dict(color=TEXT), height=320,
+                              margin=dict(t=10, b=40),
+                              yaxis_title="Accuracy %", xaxis_title="Event date")
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown("---")
+            st.markdown(f"### ❌ Все промахи ({len(miss_records)})")
+            st.caption("Список боёв, где модель ошиблась. Используется для "
+                       "auto-extract lessons на странице 📖 Lessons.")
+            miss_df = pd.DataFrame(miss_records).sort_values(
+                "confidence", ascending=False)
+            st.dataframe(miss_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Нет graded blind-tests. Сделай несколько прогонов сначала.")
+
 
 # =================================================================
 # PAGE: LESSONS — память ошибок модели
@@ -4053,6 +4143,49 @@ if page == "📖 Lessons":
     mc1, mc2 = st.columns(2)
     mc1.metric("📚 Всего уроков", len(lessons))
     mc2.metric("✅ Активных", active)
+
+    st.markdown("---")
+    # ---- Auto-extract lessons from misses ----
+    st.markdown("### 🤖 Auto-extract уроков из промахов")
+    st.caption("Сканирует все blind-test промахи → LLM находит повторяющиеся "
+               "паттерны → предлагает новые правила. Ты approve вручную.")
+
+    from lessons_auto import (collect_misses, suggest_lessons_via_llm,
+                                save_drafts, load_drafts, approve_draft,
+                                remove_draft, DRAFTS_FILE)
+
+    cc1, cc2 = st.columns([1, 1])
+    miss_count = len(collect_misses(min_confidence=0.55))
+    cc1.info(f"📉 Промахов в базе (с уверенностью ≥55%): **{miss_count}**")
+    if cc2.button("🤖 Generate new lesson drafts", disabled=miss_count < 3,
+                  type="primary"):
+        with st.spinner("LLM анализирует промахи..."):
+            misses = collect_misses(min_confidence=0.55)
+            drafts = suggest_lessons_via_llm(misses, max_misses=30)
+            save_drafts(drafts)
+            st.success(f"✅ Сгенерировано {len(drafts)} drafts")
+            st.rerun()
+
+    drafts = load_drafts()
+    if drafts:
+        st.markdown(f"#### 📝 Drafts ({len(drafts)})")
+        for i, d in enumerate(drafts):
+            if "_raw_response" in d or "_parse_error" in d:
+                with st.expander(f"⚠️ Draft #{i+1} — parse error"):
+                    st.code(json.dumps(d, indent=2, ensure_ascii=False)[:1500])
+                continue
+            with st.expander(f"🆕 #{i+1}: {d.get('title','?')}"):
+                st.markdown(d.get("body", ""))
+                if d.get("tags"):
+                    st.markdown("**Tags:** " + ", ".join(f"`{t}`" for t in d["tags"]))
+                if d.get("trigger_keywords"):
+                    st.markdown("**Triggers:** " + ", ".join(f"`{k}`" for k in d["trigger_keywords"]))
+                ac1, ac2 = st.columns(2)
+                if ac1.button("✅ Approve & publish", key=f"appr_{i}"):
+                    approve_draft(i); remove_draft(i)
+                    st.success("Published!"); st.rerun()
+                if ac2.button("🗑️ Discard", key=f"disc_{i}"):
+                    remove_draft(i); st.rerun()
 
     st.markdown("---")
     st.markdown("### ➕ Добавить новый урок")

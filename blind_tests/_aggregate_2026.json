@@ -1,0 +1,129 @@
+{
+  "generated_at": "2026-05-11T18:28:50",
+  "model": "openai/gpt-oss-120b:free",
+  "total_fights": 189,
+  "accuracy_%": 60.84656084656085,
+  "brier": 0.22496953823953822,
+  "per_event": [
+    {
+      "date": "2026-01-24",
+      "name": "UFC 324: Gaethje vs. Pimblett",
+      "n": 11,
+      "graded": 11,
+      "acc": 72.72727272727273,
+      "brier": 0.17880000000000001
+    },
+    {
+      "date": "2026-01-31",
+      "name": "UFC 325: Volkanovski vs. Lopes 2",
+      "n": 13,
+      "graded": 13,
+      "acc": 38.46153846153847,
+      "brier": 0.258
+    },
+    {
+      "date": "2026-02-07",
+      "name": "UFC Fight Night: Bautista vs. Oliveira",
+      "n": 13,
+      "graded": 13,
+      "acc": 53.84615384615385,
+      "brier": 0.2768615384615385
+    },
+    {
+      "date": "2026-02-21",
+      "name": "UFC Fight Night: Strickland vs. Hernandez",
+      "n": 14,
+      "graded": 14,
+      "acc": 71.42857142857143,
+      "brier": 0.19466428571428573
+    },
+    {
+      "date": "2026-02-28",
+      "name": "UFC Fight Night: Moreno vs. Kavanagh",
+      "n": 13,
+      "graded": 13,
+      "acc": 46.15384615384615,
+      "brier": 0.24455000000000002
+    },
+    {
+      "date": "2026-03-07",
+      "name": "UFC 326: Holloway vs. Oliveira 2",
+      "n": 12,
+      "graded": 12,
+      "acc": 75.0,
+      "brier": 0.1856909090909091
+    },
+    {
+      "date": "2026-03-14",
+      "name": "UFC Fight Night: Emmett vs. Vallejos",
+      "n": 14,
+      "graded": 14,
+      "acc": 78.57142857142857,
+      "brier": 0.16695714285714286
+    },
+    {
+      "date": "2026-03-21",
+      "name": "UFC Fight Night: Evloev vs. Murphy",
+      "n": 13,
+      "graded": 13,
+      "acc": 76.92307692307693,
+      "brier": 0.19209230769230767
+    },
+    {
+      "date": "2026-03-28",
+      "name": "UFC Fight Night: Adesanya vs. Pyfer",
+      "n": 13,
+      "graded": 12,
+      "acc": 50.0,
+      "brier": 0.2392818181818182
+    },
+    {
+      "date": "2026-04-04",
+      "name": "UFC Fight Night: Moicano vs. Duncan",
+      "n": 13,
+      "graded": 13,
+      "acc": 69.23076923076923,
+      "brier": 0.20573846153846156
+    },
+    {
+      "date": "2026-04-11",
+      "name": "UFC 327: Procházka vs. Ulberg",
+      "n": 12,
+      "graded": 11,
+      "acc": 45.45454545454545,
+      "brier": 0.28385454545454547
+    },
+    {
+      "date": "2026-04-18",
+      "name": "UFC Fight Night: Burns vs. Malott",
+      "n": 12,
+      "graded": 11,
+      "acc": 45.45454545454545,
+      "brier": 0.25472
+    },
+    {
+      "date": "2026-04-25",
+      "name": "UFC Fight Night: Sterling vs. Zalal",
+      "n": 13,
+      "graded": 13,
+      "acc": 61.53846153846154,
+      "brier": 0.23809230769230771
+    },
+    {
+      "date": "2026-05-02",
+      "name": "UFC Fight Night: Della Maddalena vs. Prates",
+      "n": 13,
+      "graded": 13,
+      "acc": 61.53846153846154,
+      "brier": 0.22855384615384616
+    },
+    {
+      "date": "2026-05-09",
+      "name": "UFC 328: Chimaev vs. Strickland",
+      "n": 13,
+      "graded": 13,
+      "acc": 61.53846153846154,
+      "brier": 0.23809230769230771
+    }
+  ]
+}

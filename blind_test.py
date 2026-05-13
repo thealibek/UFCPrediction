@@ -57,7 +57,9 @@ def file_for(event_name: str, event_date: str) -> Path:
 
 
 def list_tests() -> list[Path]:
-    return sorted(BLIND_DIR.glob("*.json"))
+    # Игнорируем служебные файлы с префиксом _ (e.g. _aggregate_2026.json)
+    return sorted(p for p in BLIND_DIR.glob("*.json")
+                  if not p.name.startswith("_"))
 
 
 def load_test(path: Path) -> dict:

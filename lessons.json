@@ -194,5 +194,207 @@
     "created_at": "2026-05-11T13:09:59",
     "source": "manual:post_v2_blindtest",
     "active": true
+  },
+  {
+    "id": "lsn_c3e1cf71",
+    "title": "Не недооценивайте влияние сабмишенов у бойцов с низким SLpM",
+    "body": "Бойцы с небольшим количеством ударов в минуту часто выигрывают за счёт высокого SubAvg, но модель часто предсказывает решение. При низком SLpM проверяйте SubAvg и TDDef; если они высоки, повышайте вероятность сабмишена.",
+    "tags": [
+      "submission",
+      "grappling",
+      "prediction"
+    ],
+    "trigger_keywords": [
+      "subavg",
+      "submission",
+      "tddef",
+      "низкий slpm"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_42a68e5c",
+    "title": "Проверяйте дисбаланс в точности ударов при схожих SLpM",
+    "body": "Когда два бойца имеют похожий SLpM, модель часто выбирает победителя по другим признакам, игнорируя разницу в StrAcc. Высокая точность может компенсировать меньший объём ударов, поэтому при схожем темпе учитывайте StrAcc как решающий фактор.",
+    "tags": [
+      "accuracy",
+      "strike",
+      "comparison"
+    ],
+    "trigger_keywords": [
+      "stracc",
+      "точность",
+      "slpm",
+      "ударный объём"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_631249dd",
+    "title": "Не полагайтесь только на общий win‑rate без контекста уровня оппонентов",
+    "body": "Бойцы с высоким общим рекордом часто получают преимущество, но если их победы получены против низкоранжированных соперников, модель ошибается. При оценке win‑rate учитывайте средний рейтинг оппонентов (ELO) и корректируйте уверенность в победе.",
+    "tags": [
+      "record",
+      "opponent_quality",
+      "ranking"
+    ],
+    "trigger_keywords": [
+      "win‑rate",
+      "рекорд",
+      "elo",
+      "уровень соперников"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_c1362ae6",
+    "title": "Остерегайтесь переоценки «домашних» фаворитов без статистики",
+    "body": "Модель часто повышает шансы бойцов, выступающих в своей стране, даже если их статистика не подтверждает преимущество. При наличии домашнего преимущества проверяйте объективные метрики (ELO, StrAcc, TDAvg) и снижайте вес домашнего фактора, если данные не подтверждают его.",
+    "tags": [
+      "bias",
+      "venue",
+      "statistics"
+    ],
+    "trigger_keywords": [
+      "домашний",
+      "домашнее преимущество",
+      "venue",
+      "bias"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_8abc02c6",
+    "title": "Не игнорируйте недавние KO‑losses у ветеранов",
+    "body": "Ветераны старше 35 лет часто получают штраф в виде «хрустящей челюсти», но модель иногда пропускает их недавние KO‑losses, полагая, что опыт компенсирует. При оценке ветеранов проверяйте их последние KO‑losses и снижайте вероятность KO‑метода.",
+    "tags": [
+      "age",
+      "knockout",
+      "risk"
+    ],
+    "trigger_keywords": [
+      "ветеран",
+      "ko‑loss",
+      "возраст",
+      "челюсть"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_8b0327f7",
+    "title": "Учитывайте стиль борьбы при большом разнице в росте",
+    "body": "Большой рост и размах дают преимущество в стойке, но если у более короткого соперника высокий TDAvg и SubAvg, модель часто ошибается, полагая, что размах решает бой. При значительном разнице в росте проверяйте показатели борьбы и предсказывайте возможность перехода в партер.",
+    "tags": [
+      "grappling",
+      "reach",
+      "style"
+    ],
+    "trigger_keywords": [
+      "размах",
+      "рост",
+      "tdavg",
+      "subavg"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_6490db44",
+    "title": "Не переоценивайте темп ударов без учёта защиты",
+    "body": "Если один боец имеет значительно выше SLpM, но его StrDef ниже среднего, модель часто считает его фаворитом, игнорируя риск контратак. При высокой ударной активности проверяйте защитные показатели (StrDef, TDDef) и учитывайте, что бой может закончиться контратакой.",
+    "tags": [
+      "strike",
+      "defense",
+      "analytics"
+    ],
+    "trigger_keywords": [
+      "slpm",
+      "ударный темп",
+      "strdef",
+      "контратака"
+    ],
+    "created_at": "2026-05-12T09:42:06",
+    "source": "auto_extracted_v1",
+    "active": true
+  },
+  {
+    "id": "lsn_11a7f198",
+    "title": "Пост-loss-belt мотивация: бывший чемпион чаще проигрывает следующий бой",
+    "body": "Бойцы, потерявшие пояс, в следующем бою проигрывают значительно чаще статистики. Кейсы: Leon Edwards (loss to Muhammad → loss next), Belal Muhammad (loss to JDM → loss next), Volkanovski (loss to Topuria → loss to Topuria again). Психологическая просадка + потеря «champion mentality». ПРАВИЛО: если боец проиграл title fight в последних 1-2 боях, снижай его win_prob на 8-12pp, особенно против голодного претендента. Учитывай также: возраст 33+, age decay усиливает эффект.",
+    "tags": [
+      "motivation",
+      "post_loss",
+      "champion_psychology",
+      "momentum"
+    ],
+    "trigger_keywords": [
+      "чемпион",
+      "champion",
+      "former",
+      "бывший",
+      "lost belt",
+      "title",
+      "loss",
+      "проиграл"
+    ],
+    "created_at": "2026-05-12T10:00:38",
+    "source": "manual_user_insight",
+    "active": true
+  },
+  {
+    "id": "lsn_7d542aab",
+    "title": "Голодный challenger vs decline-чемпион",
+    "body": "Когда молодой претендент (25-30 лет) идёт на восходящей форме (3+ wins подряд, KO/finish rate >50%) против стареющего чемпиона/бывшего чемпиона (33+ лет, признаки декая в ударной активности), претендент часто берёт верх. Кейсы: Topuria over Volkanovski/Holloway, Pereira over Adesanya, Muhammad over Edwards. ПРАВИЛО: повышай win_prob претендента на 5-8pp, если его recent finish rate выше чем у фаворита.",
+    "tags": [
+      "motivation",
+      "momentum",
+      "age_gap",
+      "challenger"
+    ],
+    "trigger_keywords": [
+      "challenger",
+      "претендент",
+      "recent",
+      "streak",
+      "momentum",
+      "rise",
+      "восход"
+    ],
+    "created_at": "2026-05-12T10:00:38",
+    "source": "manual_user_insight",
+    "active": true
+  },
+  {
+    "id": "lsn_176ff1e0",
+    "title": "Striker с реальной KO-силой бьёт TD-favourite-а",
+    "body": "Когда боец имеет реальную KO-power background (бывший кикбоксер/боксёр-чемпион, либо UFC-record с 70%+ KO-rate), его шансы на финиш ВЫШЕ чем показывает простой strike comparison. TD-defense оппонента важна, но один чистый удар может всё закончить. Кейсы: Pereira KO над Adesanya/Strickland, Aspinall KO over бoxers, Ngannou-era. ПРАВИЛО: если у фаворита TD-stat выше, но у андердога 60%+ wins-by-KO и сильный strike background — НЕ снижай ниже 45% для андердога. Возможна сюрприз-KO в R1-R2.",
+    "tags": [
+      "knockout_power",
+      "striker_background",
+      "kickboxing"
+    ],
+    "trigger_keywords": [
+      "kickboxing",
+      "кикбокс",
+      "k-1",
+      "ko power",
+      "pereira",
+      "former champion",
+      "striker"
+    ],
+    "created_at": "2026-05-12T10:11:34",
+    "source": "manual",
+    "active": true
   }
 ]
