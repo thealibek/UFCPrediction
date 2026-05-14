@@ -373,7 +373,7 @@
     ],
     "created_at": "2026-05-12T10:00:38",
     "source": "manual_user_insight",
-    "active": true
+    "active": false
   },
   {
     "id": "lsn_176ff1e0",
@@ -395,6 +395,6 @@
     ],
     "created_at": "2026-05-12T10:11:34",
     "source": "manual",
-    "active": true
+    "active": false
   }
 ]
