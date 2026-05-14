@@ -83,8 +83,19 @@ export function NotificationItem({
     );
   }
   return (
-    <button type="button" onClick={handleClick} className="block w-full text-left">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      className="block w-full text-left cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+    >
       {Inner}
-    </button>
+    </div>
   );
 }

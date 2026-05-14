@@ -3,35 +3,28 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, RefreshCw, Wifi, WifiOff } from "lucide-react";
-import { upcomingFights as fallbackFights, type Fight } from "@/lib/fights";
-import { FightCard } from "./fight-card";
 import { Badge } from "@/components/ui/badge";
+import { EventCard } from "./event-card";
+import type { EventSummary } from "@/lib/events";
 
 type Source = "loading" | "espn" | "fallback";
 
-export function FightGrid() {
-  const [fights, setFights] = useState<Fight[]>(fallbackFights);
+export function EventsGrid() {
+  const [events, setEvents] = useState<EventSummary[]>([]);
   const [source, setSource] = useState<Source>("loading");
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/upcoming-fights")
+    fetch("/api/events")
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        if (data.source === "espn" && Array.isArray(data.fights) && data.fights.length > 0) {
-          setFights(data.fights);
-          setSource("espn");
-        } else {
-          setFights(fallbackFights);
-          setSource("fallback");
-        }
+        const list = (data.events ?? []) as EventSummary[];
+        setEvents(list);
+        setSource(data.source === "espn" && list.length > 0 ? "espn" : "fallback");
       })
       .catch(() => {
-        if (!cancelled) {
-          setFights(fallbackFights);
-          setSource("fallback");
-        }
+        if (!cancelled) setSource("fallback");
       });
     return () => {
       cancelled = true;
@@ -43,16 +36,15 @@ export function FightGrid() {
       <div className="flex items-end justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold tracking-tight">Upcoming Fights</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Upcoming Events</h2>
             <SourceBadge source={source} />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {fights.length} matchups ·{" "}
             {source === "espn"
-              ? "live data from ESPN, refreshed every 30 min"
+              ? `${events.length} events · live from ESPN, cached 30 min`
               : source === "fallback"
-              ? "showing cached data — live feed unavailable"
-              : "loading live data..."}
+              ? "Live feed unavailable"
+              : "Loading live data..."}
           </p>
         </div>
         <Link
@@ -63,11 +55,23 @@ export function FightGrid() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {fights.map((f) => (
-          <FightCard key={f.id} fight={f} />
-        ))}
-      </div>
+      {source === "loading" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-[230px] rounded-lg border bg-card animate-pulse" />
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+          No upcoming events found
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {events.map((e) => (
+            <EventCard key={e.id} event={e} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -89,7 +93,7 @@ function SourceBadge({ source }: { source: Source }) {
   }
   return (
     <Badge variant="secondary" className="gap-1 text-[10px] uppercase tracking-wider">
-      <WifiOff className="h-3 w-3" /> Cached
+      <WifiOff className="h-3 w-3" /> Offline
     </Badge>
   );
 }

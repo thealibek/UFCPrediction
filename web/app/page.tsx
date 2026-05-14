@@ -2,7 +2,8 @@
 
 import { useUser } from "@/lib/user";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
-import { FightGrid } from "@/components/dashboard/fight-grid";
+import { EventsGrid } from "@/components/dashboard/events-grid";
+import { PastFights } from "@/components/dashboard/past-fights";
 import { AdminOverview } from "@/components/admin/admin-overview";
 
 export default function DashboardPage() {
@@ -26,7 +27,8 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-10">
       <DashboardHero />
-      <FightGrid />
+      <EventsGrid />
+      <PastFights />
     </div>
   );
 }

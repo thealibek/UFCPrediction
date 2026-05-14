@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Target,
 } from "lucide-react";
-import { getFightById } from "@/lib/fights";
+import { getFightById, type Fight } from "@/lib/fights";
 import { useUser } from "@/lib/user";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,36 @@ import { cn } from "@/lib/utils";
 
 export default function FightDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const fight = getFightById(id);
+  const localFight = getFightById(id);
   const { hasFullAccess } = useUser();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [fight, setFight] = useState<Fight | undefined>(localFight);
+  const [loading, setLoading] = useState(!localFight);
+
+  useEffect(() => {
+    if (localFight) return;
+    let cancelled = false;
+    fetch("/api/upcoming-fights")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const found = (data.fights as Fight[] | undefined)?.find((f) => f.id === id);
+        setFight(found);
+        setLoading(false);
+      })
+      .catch(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [id, localFight]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
+        Loading fight...
+      </div>
+    );
+  }
 
   if (!fight) notFound();
 
