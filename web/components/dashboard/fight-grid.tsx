@@ -6,6 +6,7 @@ import { ArrowRight, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { upcomingFights as fallbackFights, type Fight } from "@/lib/fights";
 import { FightCard } from "./fight-card";
 import { Badge } from "@/components/ui/badge";
+import { StaggerContainer, StaggerItem } from "@/components/motion";
 
 type Source = "loading" | "espn" | "fallback";
 
@@ -63,11 +64,13 @@ export function FightGrid() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <StaggerContainer className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {fights.map((f) => (
-          <FightCard key={f.id} fight={f} />
+          <StaggerItem key={f.id}>
+            <FightCard fight={f} />
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerContainer>
     </section>
   );
 }

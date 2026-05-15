@@ -20,12 +20,12 @@ export function NotificationBell() {
         <button
           type="button"
           aria-label={`Notifications (${unreadCount} unread)`}
-          className="relative h-9 w-9 grid place-items-center rounded-md hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="relative h-10 w-10 grid place-items-center rounded-md hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold ring-2 ring-background">
-              {unreadCount > 9 ? "9+" : unreadCount}
+            <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-semibold ring-2 ring-background tabular-nums">
+              {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
         </button>

@@ -163,7 +163,7 @@ function BoutRow({
   onUpgrade: () => void;
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-muted/30 transition-colors">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_auto_minmax(0,240px)_1fr] gap-x-4 gap-y-2 items-center px-5 py-4 hover:bg-muted/30 transition-colors">
       {/* Top tags */}
       <div className="lg:hidden flex items-center gap-1.5 flex-wrap">
         {isMain && (

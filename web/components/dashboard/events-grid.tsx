@@ -6,6 +6,7 @@ import { ArrowRight, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EventCard } from "./event-card";
 import type { EventSummary } from "@/lib/events";
+import { StaggerContainer, StaggerItem } from "@/components/motion";
 
 type Source = "loading" | "espn" | "fallback";
 
@@ -66,11 +67,13 @@ export function EventsGrid() {
           No upcoming events found
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StaggerContainer className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {events.map((e) => (
-            <EventCard key={e.id} event={e} />
+            <StaggerItem key={e.id}>
+              <EventCard event={e} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       )}
     </section>
   );

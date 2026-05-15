@@ -27,6 +27,25 @@ interface EspnCompetitor {
 interface EspnCompetition {
   id: string;
   competitors?: EspnCompetitor[];
+  format?: { regulation?: { periods?: number } };
+  note?: string;
+}
+
+// Pick the headliner of an event. ESPN orders competitions chronologically
+// (early prelims → prelims → main card → main event LAST). The main event is
+// also the only 5-round bout on a non-PPV card; on PPVs there's still exactly
+// one true headliner. Strategy:
+//   1. Find the LAST competition with periods === 5 (true main event marker)
+//   2. Otherwise fall back to the last competition in the array
+//   3. If still nothing — undefined (lets caller use title parsing)
+function pickMainEvent(
+  competitions: EspnCompetition[] | undefined
+): EspnCompetition | undefined {
+  if (!competitions || competitions.length === 0) return undefined;
+  for (let i = competitions.length - 1; i >= 0; i--) {
+    if (competitions[i].format?.regulation?.periods === 5) return competitions[i];
+  }
+  return competitions[competitions.length - 1];
 }
 interface EspnEvent {
   id: string;
@@ -67,10 +86,32 @@ export async function GET() {
     const data: { events?: EspnEvent[] } = await res.json();
     const events: EventSummary[] = (data.events ?? []).map((e) => {
       const venue = e.venues?.[0];
-      const main = parseMainEvent(e.name);
-      // last name = last whitespace token (e.g. "Allen", "Costa", "Topuria", "Gaethje")
-      const lastA = main.fighterAName.split(/\s+/).pop() ?? "";
-      const lastB = main.fighterBName.split(/\s+/).pop() ?? "";
+
+      // Pick the headliner (last 5-round bout, falls back to last competition).
+      // Gives us real full names + authoritative ESPN headshots. Fall back to
+      // title parsing only if the scoreboard hasn't populated competitors yet.
+      const mainComp = pickMainEvent(e.competitions);
+      const cA = mainComp?.competitors?.[0]?.athlete;
+      const cB = mainComp?.competitors?.[1]?.athlete;
+
+      let fighterAName = cA?.displayName ?? "";
+      let fighterBName = cB?.displayName ?? "";
+      let fighterAImage = cA?.headshot?.href;
+      let fighterBImage = cB?.headshot?.href;
+
+      if (!fighterAName || !fighterBName) {
+        const parsed = parseMainEvent(e.name);
+        fighterAName = fighterAName || parsed.fighterAName;
+        fighterBName = fighterBName || parsed.fighterBName;
+        // Try to recover photos via fuzzy surname match across all competitions
+        if (!fighterAImage && fighterAName) {
+          fighterAImage = findHeadshot(e.competitions, fighterAName.split(/\s+/).pop() ?? "");
+        }
+        if (!fighterBImage && fighterBName) {
+          fighterBImage = findHeadshot(e.competitions, fighterBName.split(/\s+/).pop() ?? "");
+        }
+      }
+
       return {
         id: e.id,
         name: e.name,
@@ -79,9 +120,10 @@ export async function GET() {
         venue: venue?.fullName ?? "TBA",
         city: [venue?.address?.city, venue?.address?.country].filter(Boolean).join(", "),
         mainEvent: {
-          ...main,
-          fighterAImage: findHeadshot(e.competitions, lastA),
-          fighterBImage: findHeadshot(e.competitions, lastB),
+          fighterAName,
+          fighterBName,
+          fighterAImage,
+          fighterBImage,
         },
         fightCount: e.competitions?.length,
       };

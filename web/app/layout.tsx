@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationsDemoBootstrap } from "@/components/notifications/notifications-demo-bootstrap";
+import { PageTransition } from "@/components/motion/page-transition";
 
 export const metadata: Metadata = {
   title: "Octagon AI — UFC Prediction Engine",
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Sidebar />
               <div className="flex flex-1 flex-col">
                 <Header />
-                <main className="flex-1 px-6 py-8 md:px-10 lg:px-12 max-w-7xl w-full mx-auto">{children}</main>
+                <main className="flex-1 px-6 py-8 md:px-10 lg:px-12 max-w-7xl w-full mx-auto">
+                  <PageTransition>{children}</PageTransition>
+                </main>
               </div>
             </div>
             <Toaster />

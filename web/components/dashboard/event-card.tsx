@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FighterPhoto } from "@/components/fighter-photo";
+import { motion } from "motion/react";
+import { ANIMATIONS_ENABLED, fadeUp } from "@/lib/animations";
 import type { EventSummary } from "@/lib/events";
 import { getFighterImage } from "@/lib/fighter-images";
 import { cn } from "@/lib/utils";
@@ -22,7 +24,12 @@ export function EventCard({ event }: { event: EventSummary }) {
   const cardTitle = event.shortName ?? event.name;
 
   return (
-    <Card className="overflow-hidden group transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
+    <motion.div
+      variants={ANIMATIONS_ENABLED ? fadeUp : undefined}
+      whileHover={ANIMATIONS_ENABLED ? { y: -4, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } } : undefined}
+      className="will-change-transform"
+    >
+    <Card className="overflow-hidden group transition-shadow hover:shadow-lg hover:shadow-black/5 duration-200">
       <CardContent className="p-0">
         {/* Top */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between">
@@ -84,6 +91,7 @@ export function EventCard({ event }: { event: EventSummary }) {
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
 

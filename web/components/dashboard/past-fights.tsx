@@ -8,6 +8,8 @@ import { FighterPhoto } from "@/components/fighter-photo";
 import { pastFights } from "@/lib/fights";
 import { getFighterImage } from "@/lib/fighter-images";
 import { cn } from "@/lib/utils";
+import { motion } from "motion/react";
+import { ANIMATIONS_ENABLED, stagger } from "@/lib/animations";
 
 export function PastFights() {
   const correct = pastFights.filter((f) => f.predictedWinner === f.actualWinner).length;
@@ -32,7 +34,12 @@ export function PastFights() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="divide-y">
+          <motion.div
+            className="divide-y"
+            initial={ANIMATIONS_ENABLED ? "hidden" : false}
+            animate="show"
+            variants={stagger(0.04)}
+          >
             {pastFights.map((f) => {
               const isCorrect = f.predictedWinner === f.actualWinner;
               const date = new Date(f.date).toLocaleDateString("en-US", {
@@ -40,8 +47,9 @@ export function PastFights() {
                 day: "numeric",
               });
               return (
-                <div
+                <motion.div
                   key={f.id}
+                  variants={{ hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } } }}
                   className="grid grid-cols-[auto_auto_1fr_auto_auto] gap-3 items-center px-5 py-4 hover:bg-muted/30 transition-colors"
                 >
                   {/* Status icon */}
@@ -110,10 +118,10 @@ export function PastFights() {
                   >
                     {isCorrect ? "Hit" : "Miss"}
                   </Badge>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </CardContent>
       </Card>
     </section>

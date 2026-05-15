@@ -52,7 +52,7 @@ export function Sidebar() {
   const { isAdmin, hasFullAccess } = useUser();
 
   return (
-    <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r bg-card/30 px-4 py-6">
+    <aside className="hidden lg:flex w-60 shrink-0 flex-col self-start sticky top-0 h-screen overflow-y-auto border-r bg-card/30 px-4 py-6">
       <Link href="/" className="flex items-center gap-2 px-2 mb-8">
         <div className="grid place-items-center h-8 w-8 rounded-lg bg-primary text-primary-foreground">
           <Sparkles className="h-4 w-4" />

@@ -39,3 +39,56 @@
   user-select: none;
   pointer-events: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   UFC ANIMATION TOKENS — used by Tailwind extend + Motion variants
+   Edit `--ufc-red`/`--ufc-gold` to retheme the entire glow system.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --ufc-red: 227 6 19;          /* #E30613 — RGB triplet for color-mix */
+  --ufc-gold: 212 175 55;       /* #D4AF37 */
+  --glow-red: 0 0 0 3px rgb(var(--ufc-red) / 0.18), 0 8px 24px rgb(var(--ufc-red) / 0.28);
+  --glow-gold: 0 0 0 2px rgb(var(--ufc-gold) / 0.25), 0 4px 18px rgb(var(--ufc-gold) / 0.32);
+}
+
+/* Keyframes consumed by Tailwind animate-* classes (see tailwind.config.ts) */
+@keyframes ufc-fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ufc-fade-in {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes ufc-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--ufc-red) / 0.55); }
+  50%      { box-shadow: 0 0 0 14px rgb(var(--ufc-red) / 0); }
+}
+@keyframes ufc-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes ufc-shine-sweep {
+  0%   { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+/* Reduced motion: kill animation/transitions for users who opted out */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Skeleton shimmer utility (cards/profiles loading states) */
+.ufc-skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--accent)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: ufc-shimmer 1.6s linear infinite;
+}

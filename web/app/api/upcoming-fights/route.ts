@@ -25,6 +25,7 @@ interface EspnCompetition {
   note?: string;
   competitors?: EspnCompetitor[];
   status?: { type?: { state?: string; completed?: boolean } };
+  format?: { regulation?: { periods?: number } };
 }
 
 interface EspnEvent {
@@ -79,7 +80,22 @@ function transform(events: EspnEvent[]): Fight[] {
   const out: Fight[] = [];
   for (const ev of events) {
     const eventName = ev.shortName ?? ev.name;
-    for (const comp of ev.competitions ?? []) {
+    const comps = ev.competitions ?? [];
+
+    // Find the main event index for this card.
+    // ESPN orders chronologically (prelims first, main last).
+    // Main event = LAST 5-round bout, fallback to last competition.
+    let mainIdx = -1;
+    for (let i = comps.length - 1; i >= 0; i--) {
+      if (comps[i].format?.regulation?.periods === 5) {
+        mainIdx = i;
+        break;
+      }
+    }
+    if (mainIdx === -1 && comps.length > 0) mainIdx = comps.length - 1;
+
+    for (let i = 0; i < comps.length; i++) {
+      const comp = comps[i];
       // Skip already-completed bouts
       if (comp.status?.type?.completed) continue;
 
@@ -98,7 +114,7 @@ function transform(events: EspnEvent[]): Fight[] {
         record: b.records?.[0]?.summary ?? "—",
       };
 
-      const isMain = out.length === 0; // ESPN orders main event first per event
+      const isMain = i === mainIdx;
       const isTitleFight = (comp.note ?? "").toLowerCase().includes("title");
 
       out.push({

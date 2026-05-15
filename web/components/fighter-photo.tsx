@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import Image from "next/image";
+import { motion } from "motion/react";
+import { ANIMATIONS_ENABLED } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 
 interface FighterPhotoProps {
@@ -32,32 +34,43 @@ export function FighterPhoto({
   priority = false,
 }: FighterPhotoProps) {
   const [errored, setErrored] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
   const showImage = !!src && !errored;
 
   return (
-    <div
+    <motion.div
       className={cn(
         "relative overflow-hidden rounded-full bg-secondary shrink-0",
         className
       )}
       style={{ width: size, height: size }}
+      whileHover={ANIMATIONS_ENABLED ? { scale: 1.06 } : undefined}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
       {showImage ? (
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes={sizes ?? `${size}px`}
-          priority={priority}
-          className="object-cover object-top"
-          onError={() => setErrored(true)}
-        />
+        <motion.div
+          className="absolute inset-0"
+          initial={ANIMATIONS_ENABLED ? { opacity: 0, scale: 1.08 } : false}
+          animate={loaded || !ANIMATIONS_ENABLED ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.08 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            sizes={sizes ?? `${size}px`}
+            priority={priority}
+            className="object-cover object-top"
+            onLoad={() => setLoaded(true)}
+            onError={() => setErrored(true)}
+          />
+        </motion.div>
       ) : (
         <div className="absolute inset-0 grid place-items-center text-muted-foreground font-semibold">
           <span style={{ fontSize: Math.max(10, Math.round(size * 0.32)) }}>{initials(alt)}</span>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
