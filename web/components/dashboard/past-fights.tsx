@@ -4,14 +4,10 @@ import { Check, X, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FighterPhoto } from "@/components/fighter-photo";
 import { pastFights } from "@/lib/fights";
 import { getFighterImage } from "@/lib/fighter-images";
 import { cn } from "@/lib/utils";
-
-function initials(n: string) {
-  return n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
 
 export function PastFights() {
   const correct = pastFights.filter((f) => f.predictedWinner === f.actualWinner).length;
@@ -62,14 +58,18 @@ export function PastFights() {
 
                   {/* Fighter avatars */}
                   <div className="flex -space-x-2 shrink-0">
-                    <Avatar className="h-9 w-9 border-2 border-background bg-secondary">
-                      <AvatarImage src={getFighterImage(f.fighterA.name)} alt={f.fighterA.name} className="object-cover object-top" />
-                      <AvatarFallback className="text-[10px] font-semibold">{initials(f.fighterA.name)}</AvatarFallback>
-                    </Avatar>
-                    <Avatar className="h-9 w-9 border-2 border-background bg-secondary">
-                      <AvatarImage src={getFighterImage(f.fighterB.name)} alt={f.fighterB.name} className="object-cover object-top" />
-                      <AvatarFallback className="text-[10px] font-semibold">{initials(f.fighterB.name)}</AvatarFallback>
-                    </Avatar>
+                    <FighterPhoto
+                      src={getFighterImage(f.fighterA.name)}
+                      alt={f.fighterA.name}
+                      size={36}
+                      className="border-2 border-background"
+                    />
+                    <FighterPhoto
+                      src={getFighterImage(f.fighterB.name)}
+                      alt={f.fighterB.name}
+                      size={36}
+                      className="border-2 border-background"
+                    />
                   </div>
 
                   {/* Fighters + meta */}

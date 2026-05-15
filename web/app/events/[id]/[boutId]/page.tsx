@@ -6,17 +6,13 @@ import { ArrowLeft, Crown, Trophy, Sparkles, Lock, TrendingUp, Calendar, MapPin 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FighterPhoto } from "@/components/fighter-photo";
 import { Separator } from "@/components/ui/separator";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { useUser } from "@/lib/user";
 import type { EventDetail, EventBout } from "@/lib/events";
 import { getFighterImage } from "@/lib/fighter-images";
 import { cn } from "@/lib/utils";
-
-function initials(n: string) {
-  return n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
 
 export default function BoutDetailPage({ params }: { params: Promise<{ id: string; boutId: string }> }) {
   const { id, boutId } = use(params);
@@ -149,14 +145,13 @@ function FighterCard({
         align === "right" ? "flex-row-reverse text-right" : ""
       )}
     >
-      <Avatar className="h-20 w-20 border bg-secondary shrink-0">
-        <AvatarImage
-          src={side.imageUrl ?? getFighterImage(side.name)}
-          alt={side.name}
-          className="object-cover object-top"
-        />
-        <AvatarFallback className="text-base font-semibold">{initials(side.name)}</AvatarFallback>
-      </Avatar>
+      <FighterPhoto
+        src={side.imageUrl ?? getFighterImage(side.name)}
+        alt={side.name}
+        size={80}
+        className="border"
+        priority
+      />
       <div className="min-w-0">
         <div className="text-base font-semibold truncate">{side.name}</div>
         <div className="text-xs text-muted-foreground mt-0.5">

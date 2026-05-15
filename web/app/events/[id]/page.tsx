@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, MapPin, Crown, Trophy, Lock, Sparkles, ChevronRigh
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FighterPhoto } from "@/components/fighter-photo";
 import { Separator } from "@/components/ui/separator";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { useUser } from "@/lib/user";
@@ -19,10 +19,6 @@ const SEGMENT_LABEL: Record<EventBout["cardSegment"], string> = {
   prelims: "Prelims",
   earlyprelims: "Early Prelims",
 };
-
-function initials(n: string) {
-  return n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -284,10 +280,7 @@ function Fighter({
         align === "right" ? "lg:flex-row-reverse lg:text-right" : ""
       )}
     >
-      <Avatar className="h-12 w-12 border bg-secondary shrink-0">
-        {imageUrl && <AvatarImage src={imageUrl} alt={name} className="object-cover object-top" />}
-        <AvatarFallback className="text-xs font-semibold">{initials(name)}</AvatarFallback>
-      </Avatar>
+      <FighterPhoto src={imageUrl} alt={name} size={48} className="border" />
       <div className="min-w-0">
         <div className="text-sm font-semibold truncate">{name}</div>
         <div className="text-[11px] text-muted-foreground tabular-nums">

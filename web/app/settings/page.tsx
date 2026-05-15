@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Crown, ShieldCheck } from "lucide-react";
 import { NotificationPreferences } from "@/components/notifications/notification-preferences";
 import { NotificationDemoTriggers } from "@/components/notifications/notification-demo-triggers";
+import { RefreshFightersCard } from "@/components/admin/refresh-fighters-card";
 
 export default function SettingsPage() {
   const { name, email, role, isSubscribed, hasFullAccess, setRole, setSubscribed } = useUser();
@@ -94,6 +95,8 @@ export default function SettingsPage() {
 
       <NotificationPreferences />
       <NotificationDemoTriggers />
+
+      {role === "admin" && <RefreshFightersCard />}
     </div>
   );
 }

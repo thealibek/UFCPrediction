@@ -5,6 +5,7 @@ import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { EventsGrid } from "@/components/dashboard/events-grid";
 import { PastFights } from "@/components/dashboard/past-fights";
 import { AdminOverview } from "@/components/admin/admin-overview";
+import { RefreshFightersCard } from "@/components/admin/refresh-fighters-card";
 
 export default function DashboardPage() {
   const { showAdminUI } = useUser();
@@ -19,6 +20,7 @@ export default function DashboardPage() {
             Manage lessons, monitor model performance, and run training pipelines.
           </p>
         </div>
+        <RefreshFightersCard compact />
         <AdminOverview />
       </div>
     );

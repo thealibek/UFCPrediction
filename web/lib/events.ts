@@ -35,12 +35,15 @@ export interface EventDetail extends EventSummary {
 }
 
 // Parse "UFC Fight Night: Allen vs. Costa" -> { a: "Allen", b: "Costa" }
+// Returns empty strings (TBA) if no "X vs Y" pattern is present — avoids
+// turning event titles like "UFC 329" or venue names into fake fighter names.
 export function parseMainEvent(name: string): { fighterAName: string; fighterBName: string } {
-  const colonIdx = name.lastIndexOf(":");
-  const tail = colonIdx >= 0 ? name.slice(colonIdx + 1).trim() : name;
-  const match = tail.match(/^(.+?)\s+vs\.?\s+(.+)$/i);
-  if (match) return { fighterAName: match[1].trim(), fighterBName: match[2].trim() };
-  return { fighterAName: tail, fighterBName: "" };
+  // Look for a "X vs Y" / "X vs. Y" pattern anywhere in the title
+  const match = name.match(/([A-Za-zÀ-ÿ.''\- ]+?)\s+vs\.?\s+([A-Za-zÀ-ÿ.''\- ]+?)$/i);
+  if (match) {
+    return { fighterAName: match[1].trim(), fighterBName: match[2].trim() };
+  }
+  return { fighterAName: "", fighterBName: "" };
 }
 
 // Deterministic synthetic prediction (placeholder until Python model is wired)
