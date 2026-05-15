@@ -201,11 +201,12 @@ export async function refreshFighterDatabase(opts: RefreshOptions = {}): Promise
   // 1. Discover names from scoreboard (skips API if already known)
   const rosterNames = await fetchRosterNames(monthsBack, monthsFwd);
 
-  // 2. Resolve headshots for new names
+  // 2. Resolve headshots for new names + retry previous NULL misses by default
   let newlyResolved = 0;
+  const retryMisses = opts.retryMisses !== false; // default: true
   for (const name of rosterNames) {
     const cached = name in images;
-    if (cached && !(opts.retryMisses && images[name] === null)) continue;
+    if (cached && !(retryMisses && images[name] === null)) continue;
     try {
       const url = await lookupHeadshot(name);
       images[name] = url;

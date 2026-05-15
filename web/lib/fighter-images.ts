@@ -11,30 +11,69 @@ function pick(key: string): string | undefined {
 
 /**
  * Resolve a fighter name to an ESPN headshot URL (or undefined).
- * Tries exact, then case-insensitive, then last-name fallback.
+ *
+ * Strategy (in order):
+ *   1. Exact key match.
+ *   2. Case-insensitive full-name match.
+ *   3. If `hint.weightClass` is provided, restrict to that division for the
+ *      remaining steps — avoids "Costa" → wrong Costa in another weight.
+ *   4. First-name + last-name match (both parts, case-insensitive).
+ *   5. Unique last-name match — returns ONLY if exactly one fighter shares
+ *      that surname. If two or more candidates exist, returns undefined so
+ *      the UI falls back to initials instead of showing the wrong fighter.
  */
-export function getFighterImage(name: string | undefined | null): string | undefined {
+export function getFighterImage(
+  name: string | undefined | null,
+  hint?: { weightClass?: string }
+): string | undefined {
   if (!name) return undefined;
   const direct = pick(name);
   if (direct) return direct;
 
   const lower = name.toLowerCase();
-  for (const key of Object.keys(raw)) {
+  const parts = lower.split(/\s+/).filter(Boolean);
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+
+  // Build candidate pool, optionally filtered by weight class
+  const isInDivision = (key: string): boolean => {
+    if (!hint?.weightClass) return true;
+    const wc = enrichment[key]?.weightClass;
+    return !wc || wc === hint.weightClass;
+  };
+  const candidates = Object.keys(raw).filter(isInDivision);
+
+  // 2. Case-insensitive full match
+  for (const key of candidates) {
     if (key.toLowerCase() === lower) {
       const v = pick(key);
       if (v) return v;
     }
   }
 
-  const lastName = name.split(/\s+/).pop()?.toLowerCase();
   if (!lastName) return undefined;
-  for (const key of Object.keys(raw)) {
-    const keyLast = key.split(/\s+/).pop()?.toLowerCase();
-    if (keyLast === lastName) {
-      const v = pick(key);
-      if (v) return v;
+
+  // 4. First + last name match (handles "Bryce Mitchell" vs "Bryce Henry")
+  if (firstName && firstName !== lastName) {
+    for (const key of candidates) {
+      const kp = key.toLowerCase().split(/\s+/);
+      if (kp[0] === firstName && kp[kp.length - 1] === lastName) {
+        const v = pick(key);
+        if (v) return v;
+      }
     }
   }
+
+  // 5. Unique surname match — bail out if ambiguous
+  const surnameMatches: string[] = [];
+  for (const key of candidates) {
+    const keyLast = key.split(/\s+/).pop()?.toLowerCase();
+    if (keyLast === lastName && raw[key]) surnameMatches.push(key);
+  }
+  if (surnameMatches.length === 1) {
+    return pick(surnameMatches[0]);
+  }
+  // 0 or 2+ candidates → can't disambiguate safely
   return undefined;
 }
 
