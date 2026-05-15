@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FighterPhoto } from "@/components/fighter-photo";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { useUser } from "@/lib/user";
 import type { EventDetail, EventBout } from "@/lib/events";
-import { getFighterImage } from "@/lib/fighter-images";
+import { getFighterImage, extractAthleteId } from "@/lib/fighter-images";
 import { cn } from "@/lib/utils";
 
 export default function BoutDetailPage({ params }: { params: Promise<{ id: string; boutId: string }> }) {
@@ -123,8 +124,23 @@ export default function BoutDetailPage({ params }: { params: Promise<{ id: strin
         </CardContent>
       </Card>
 
-      {/* Prediction */}
-      <PredictionPanel bout={bout} unlocked={hasFullAccess} onUpgrade={() => setUpgradeOpen(true)} />
+      {/* Tabs: Prediction / Stats */}
+      <Tabs defaultValue="prediction" className="w-full">
+        <TabsList className="h-10 p-1 w-full sm:w-auto">
+          <TabsTrigger value="prediction" className="text-sm px-4 py-1.5 flex-1 sm:flex-none">
+            <Sparkles className="h-3.5 w-3.5" /> Prediction
+          </TabsTrigger>
+          <TabsTrigger value="stats" className="text-sm px-4 py-1.5 flex-1 sm:flex-none">
+            <TrendingUp className="h-3.5 w-3.5" /> Stats
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="prediction" className="mt-5">
+          <PredictionPanel bout={bout} unlocked={hasFullAccess} onUpgrade={() => setUpgradeOpen(true)} />
+        </TabsContent>
+        <TabsContent value="stats" className="mt-5">
+          <StatsPanel bout={bout} />
+        </TabsContent>
+      </Tabs>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
@@ -290,6 +306,232 @@ function PredictionPanel({
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------- Stats panel ----------
+
+interface FighterProfile {
+  id: string;
+  name: string;
+  record: string;
+  weight?: string;
+  height?: string;
+  age?: number;
+  country?: string;
+  imageUrl?: string;
+  stats: Record<string, string | number | undefined>;
+}
+
+const STAT_ROWS: Array<{ key: string; label: string; suffix?: string; higherIsBetter: boolean }> = [
+  { key: "Sig Strk LPM", label: "Sig. Strikes Landed / Min", higherIsBetter: true },
+  { key: "Sig Strk Acc", label: "Strike Accuracy", suffix: "%", higherIsBetter: true },
+  { key: "Takedown Average", label: "Takedowns / 15 Min", higherIsBetter: true },
+  { key: "Takedown Accuracy", label: "Takedown Accuracy", suffix: "%", higherIsBetter: true },
+  { key: "Submission Average", label: "Submissions / 15 Min", higherIsBetter: true },
+  { key: "KO Percentage", label: "KO/TKO Win %", suffix: "%", higherIsBetter: true },
+  { key: "Decision Percentage", label: "Decision Win %", suffix: "%", higherIsBetter: true },
+];
+
+function StatsPanel({ bout }: { bout: EventBout }) {
+  const idA = extractAthleteId(bout.fighterA.imageUrl ?? getFighterImage(bout.fighterA.name));
+  const idB = extractAthleteId(bout.fighterB.imageUrl ?? getFighterImage(bout.fighterB.name));
+
+  const [a, setA] = useState<FighterProfile | null>(null);
+  const [b, setB] = useState<FighterProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [pa, pb] = await Promise.all([
+          idA ? fetch(`/api/fighters/${idA}`).then((r) => (r.ok ? r.json() : null)) : null,
+          idB ? fetch(`/api/fighters/${idB}`).then((r) => (r.ok ? r.json() : null)) : null,
+        ]);
+        if (cancelled) return;
+        setA(pa);
+        setB(pb);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed");
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [idA, idB]);
+
+  if (!idA || !idB) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Stats unavailable — one or both fighters are not yet in the database.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Failed to load stats: {error}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!a || !b) {
+    return (
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-16 rounded-lg border bg-card animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Bio strip */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="grid grid-cols-3 gap-3 items-center">
+            <BioColumn p={a} align="right" />
+            <div className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              Bio
+            </div>
+            <BioColumn p={b} align="left" />
+          </div>
+          <Separator className="my-4" />
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <BioRow label="Record" a={a.record} b={b.record} />
+            <BioRow label="Weight" a={a.weight} b={b.weight} />
+            <BioRow label="Height" a={a.height} b={b.height} />
+            <BioRow label="Age" a={a.age?.toString()} b={b.age?.toString()} />
+            <BioRow label="Country" a={a.country} b={b.country} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stat comparison rows */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-4">
+            Career Stats Comparison
+          </div>
+          <div className="flex flex-col gap-4">
+            {STAT_ROWS.map((row) => (
+              <StatRow
+                key={row.key}
+                label={row.label}
+                suffix={row.suffix}
+                higherIsBetter={row.higherIsBetter}
+                aValue={toNum(a.stats[row.key])}
+                bValue={toNum(b.stats[row.key])}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function toNum(v: string | number | undefined): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function BioColumn({ p, align }: { p: FighterProfile; align: "left" | "right" }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2 min-w-0",
+        align === "right" ? "flex-row-reverse text-right" : ""
+      )}
+    >
+      <FighterPhoto src={p.imageUrl} alt={p.name} size={40} />
+      <div className="min-w-0 text-xs font-semibold truncate">{p.name}</div>
+    </div>
+  );
+}
+
+function BioRow({ label, a, b }: { label: string; a?: string; b?: string }) {
+  return (
+    <>
+      <div className="text-right tabular-nums text-foreground/85">{a ?? "—"}</div>
+      <div className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        {label}
+      </div>
+      <div className="text-left tabular-nums text-foreground/85">{b ?? "—"}</div>
+    </>
+  );
+}
+
+function StatRow({
+  label,
+  suffix,
+  aValue,
+  bValue,
+  higherIsBetter,
+}: {
+  label: string;
+  suffix?: string;
+  aValue: number | null;
+  bValue: number | null;
+  higherIsBetter: boolean;
+}) {
+  const aWins = aValue != null && bValue != null && (higherIsBetter ? aValue > bValue : aValue < bValue);
+  const bWins = aValue != null && bValue != null && (higherIsBetter ? bValue > aValue : bValue < aValue);
+  const max = Math.max(aValue ?? 0, bValue ?? 0, 1);
+  const aPct = aValue == null ? 0 : (aValue / max) * 100;
+  const bPct = bValue == null ? 0 : (bValue / max) * 100;
+
+  return (
+    <div>
+      <div className="grid grid-cols-3 items-center gap-3 mb-1.5">
+        <div
+          className={cn(
+            "text-right text-sm tabular-nums font-semibold",
+            aWins ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
+          {aValue != null ? aValue.toFixed(2) : "—"}
+          {suffix && aValue != null && <span className="text-xs ml-0.5">{suffix}</span>}
+        </div>
+        <div className="text-center text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          {label}
+        </div>
+        <div
+          className={cn(
+            "text-left text-sm tabular-nums font-semibold",
+            bWins ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
+          {bValue != null ? bValue.toFixed(2) : "—"}
+          {suffix && bValue != null && <span className="text-xs ml-0.5">{suffix}</span>}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        {/* Fighter A bar — fills from right */}
+        <div className="h-1.5 rounded-full bg-secondary overflow-hidden flex justify-end">
+          <div
+            className={cn("h-full rounded-full transition-all", aWins ? "bg-primary" : "bg-muted-foreground/40")}
+            style={{ width: `${aPct}%` }}
+          />
+        </div>
+        {/* Fighter B bar — fills from left */}
+        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all", bWins ? "bg-primary" : "bg-muted-foreground/40")}
+            style={{ width: `${bPct}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

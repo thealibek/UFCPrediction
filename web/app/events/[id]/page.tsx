@@ -184,7 +184,7 @@ function BoutRow({
         country={bout.fighterA.country}
         record={bout.fighterA.record}
         imageUrl={bout.fighterA.imageUrl ?? getFighterImage(bout.fighterA.name)}
-        align="right"
+        align="left"
       />
       <div className="hidden lg:grid place-items-center text-[10px] font-bold text-muted-foreground tracking-widest">
         VS
